@@ -1,0 +1,1390 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaperMind</title>
+<link rel="icon" type="image/png" href="favicon-32.png">
+<link rel="stylesheet" href="style.css?v=2301">
+<style>
+/* 二级页签（文献库内 Tab）：页签头 + 内容面板占满视口，页面空间最大化 */
+.lib-page{display:flex;flex-direction:column;height:calc(100vh - var(--topbar-h));overflow:hidden;width:100%;padding:0 24px;box-sizing:border-box}
+.lib-tabs{display:flex;gap:2px;padding:10px 18px 0;background:transparent;border-bottom:none;margin:0}
+.lib-tabs button{flex:none;padding:8px 18px;font-size:13.5px;color:var(--text-2);background:rgba(241,244,249,.75);border:1px solid var(--border);border-bottom:none;border-radius:10px 10px 0 0;cursor:pointer;font-weight:500;margin-right:4px}
+.lib-tabs button:hover{color:var(--primary);background:#fff}
+.lib-tabs button.active{color:var(--primary);background:#fff;font-weight:700;border-color:var(--border);box-shadow:0 -2px 6px rgba(0,0,0,.04)}
+.lib-view{flex:1;min-height:0;overflow-y:auto;padding:14px 18px;background:#fff;border:1px solid var(--border);border-radius:0 12px 12px 12px;box-shadow:var(--shadow)}
+.lib-grid{display:grid;grid-template-columns:200px 1fr 330px;gap:16px;align-items:stretch;overflow:hidden;border-radius:0 12px 12px 12px}
+.lib-grid > *{overflow-y:auto;min-height:0}
+
+/* 简介标签 */
+.intro-tag{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;margin-top:6px;font-size:12.5px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:3px 8px}
+.intro-tag::before{content:'📌 '}
+
+/* 收藏网站视图 */
+#srcGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:12px}
+.src-card{position:relative;border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:.15s;background:#fff}
+.src-card:hover{border-color:var(--primary);box-shadow:var(--shadow)}
+.src-card.active{border-color:var(--primary);background:var(--primary-light)}
+.src-card .nm{font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px}
+.src-card .ds{font-size:12px;color:var(--text-3);margin-top:2px;line-height:1.5}
+.src-card .url{font-size:11px;color:var(--text-3);margin-top:4px;word-break:break-all}
+.src-card .del{position:absolute;top:6px;right:8px;font-size:13px;color:var(--text-3);cursor:pointer;display:none;line-height:1;padding:2px}
+.src-card:hover .del{display:block}
+.src-card .del:hover{color:var(--danger)}
+.src-card .cust-tag{font-size:10px;color:var(--purple);background:#f5f3ff;border-radius:3px;padding:0 5px;margin-left:4px}
+.add-card{border:2px dashed var(--border-2);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--text-3);font-size:13px;min-height:86px}
+.add-card:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-light)}
+.br-item{border-bottom:1px solid var(--border);padding:12px 4px;display:flex;gap:12px;align-items:flex-start}
+.br-item:hover{background:#fafbfe}
+.br-item .ck{margin-top:4px}
+.br-item .ttl{font-size:14.5px;font-weight:600;cursor:pointer}
+.br-item .ttl:hover{color:var(--primary)}
+.br-item .au{color:var(--text-2);font-size:12.5px;margin-top:2px}
+.br-item .meta2{color:var(--text-3);font-size:12px;margin-top:2px;display:flex;gap:12px;flex-wrap:wrap}
+.browse-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.imported-tag{font-size:11px;color:var(--accent);background:#ecfdf5;border-radius:4px;padding:1px 6px}
+.sel-bar{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);padding:8px 4px 0}
+.adaptor-empty{padding:44px 20px;text-align:center;color:var(--text-3)}
+.adaptor-empty .big{font-size:40px;margin-bottom:8px}
+/* 导入详情表单 */
+.tag-pick{display:flex;gap:6px;flex-wrap:wrap}
+.tag-pick .chip{font-size:12.5px;padding:4px 11px;border-radius:999px;border:1px solid var(--border);background:#fff;cursor:pointer;color:var(--text-2)}
+.tag-pick .chip.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.idm-paper{display:flex;gap:8px;align-items:center;padding:7px 8px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;font-size:13px;background:#f8fafc}
+.idm-paper .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="logo" href="index.html"><span class="mark">研</span>PaperMind</a>
+  <nav class="nav">
+    <a href="index.html" data-i18n="nav_discover">发现</a>
+    <a href="library.html" class="active" data-i18n="nav_library">文献库</a>
+    <a href="graph.html" data-i18n="nav_graph">图谱</a>
+    <a href="vault.html" data-i18n="nav_vault">知识库</a>
+    <a href="community.html" data-i18n="nav_community">社区交流</a>
+    
+  </nav>
+  <div class="right">
+    
+    
+    <div class="user-menu">
+      <div class="avatar" id="avatarBtn">王</div>
+      <div class="um-drop hidden" id="userDrop">
+        <div class="um-head"><b id="umName">—</b><span id="umEmail"></span></div>
+        <a href="profile.html">👤 个人中心</a>
+        <a href="profile.html#edit">📝 修改资料</a>
+        
+        <div class="um-sep"></div>
+        <a href="javascript:logout()">🚪 退出登录</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="lib-page">
+
+  <!-- 二级页签 -->
+  <div class="lib-tabs">
+    <button class="active" id="tab-lib" data-i18n="lib_tab_mine" onclick="switchLibTab('lib')">📚 我的文献</button>
+    <button id="tab-browse" data-i18n="lib_tab_browse" onclick="switchLibTab('browse')">⭐ 收藏网站</button>
+    <button id="tab-reader" data-i18n="lib_tab_reader" onclick="switchLibTab('reader')">📖 阅读器</button>
+    <button id="tab-import" data-i18n="lib_tab_import" onclick="switchLibTab('import')">📥 导入文献</button>
+  </div>
+
+  <!-- ============ 视图一：我的文献 ============ -->
+  <div id="viewLib" class="lib-view lib-grid">
+    <aside class="lib-col" style="padding:12px">
+      <div style="font-weight:700;font-size:13px;color:var(--text-3);padding:4px 8px;margin-bottom:6px">论文类别（文件夹）</div>
+      <div id="folderList"></div>
+      <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;color:var(--text-3);font-size:12px;padding-left:8px">
+        阅读状态（在读/想读/读完）在右侧工具栏筛选<br>
+        <span class="badge badge-green" style="margin-top:6px">简介可编辑：卡片 ✏️ 或详情页</span>
+      </div>
+    </aside>
+    <main>
+      <div class="card" style="padding:16px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="font-size:17px;font-weight:700" id="libTitle">全部文献 <span id="libCount" style="color:var(--text-3);font-size:13px;font-weight:400"></span></div>
+        <div style="flex:1"></div>
+        <select id="statusFilter" onchange="applyFilter()" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:#fff">
+          <option value="">全部状态</option>
+          <option>在读</option><option>想读</option><option>读完</option>
+        </select>
+        <select id="yearFilter" onchange="applyFilter()" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:#fff">
+          <option value="">全部年份</option>
+          <option>2021</option><option>2020</option><option>2017</option><option>2016</option>
+        </select>
+        <select id="tagFilter" onchange="applyFilter()" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:#fff">
+          <option value="">全部标签</option>
+          <option>OCR</option><option>Transformer</option><option>CV</option><option>NLP</option><option>目标检测</option><option>图像分类</option>
+        </select>
+        <select id="sortBy" onchange="renderLibList()" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:#fff">
+          <option value="read">按阅读进度</option>
+          <option value="cites">按引用量</option>
+          <option value="year">按年份</option>
+        </select>
+      </div>
+      <div class="card" style="padding:6px;margin-top:14px">
+        <div id="libList"></div>
+        <div class="pager" id="libPager"></div>
+      </div>
+      <div id="emptyLib" class="empty hidden">
+        <div class="big">📭</div>该文件夹暂无文献<br><button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="goBrowseTab()">去收藏网站导入</button>
+      </div>
+    </main>
+
+    <!-- 我的文献：右侧论文详情面板 -->
+    <aside class="lib-col" style="padding:14px;min-height:320px" id="libDetail">
+      <div style="color:var(--text-3);font-size:13px;text-align:center;padding:60px 0" id="libDetailEmpty">
+        点击左侧论文<br>在右侧查看详情
+      </div>
+    </aside>
+  </div>
+
+  <!-- ============ 视图二：收藏网站 ============ -->
+  <div id="viewBrowse" class="hidden lib-view" style="margin-top:0">
+    <div class="section-title" style="margin-top:4px">🌐 收藏网站
+      <span class="more" style="color:var(--text-3);font-size:13px">在站内浏览收藏的论文网站，勾选即入库 —— 等效浏览器插件的"一键抓取"</span>
+    </div>
+    <div id="srcDefaultTip" class="hidden" style="margin-bottom:10px"></div>
+    <div id="srcGrid"></div>
+
+    <div class="card browse-toolbar" style="padding:14px 18px;margin-top:16px">
+      <div class="modes" style="display:flex;background:#f1f4f9;border-radius:8px;padding:3px">
+        <button id="brv-search" class="active" style="padding:5px 14px;font-size:13px;border-radius:6px;color:var(--text-2);font-weight:600" onclick="switchBrView('search')">🔍 站内检索</button>
+        <button id="brv-embed" style="padding:5px 14px;font-size:13px;border-radius:6px;color:var(--text-2);font-weight:600" onclick="switchBrView('embed')">🌐 嵌入访问</button>
+      </div>
+      <input id="browseQ" placeholder="在当前网站中搜索关键词（如 scene text / transformer）…"
+             style="flex:1;padding:9px 14px;border:1px solid var(--border);border-radius:999px;outline:none"
+             onkeydown="if(event.key==='Enter')doBrSearch()">
+      <button class="btn btn-primary" onclick="doBrSearch()">搜索</button>
+      <span style="color:var(--text-3);font-size:12.5px" id="resultInfo"></span>
+      <div style="flex:1"></div>
+      <button class="btn btn-primary" id="importBtn" onclick="importChecked()">＋ 导入所选（<span id="selCount">0</span>）</button>
+    </div>
+
+    <!-- 嵌入访问视图（内嵌 iframe，不跳转） -->
+    <div class="card hidden" id="embedView" style="margin-top:12px;padding:0;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:#f8fafc;flex-wrap:wrap">
+        <span style="font-size:12.5px;color:var(--text-3)">🌐 内嵌访问</span>
+        <input id="embedUrl" style="flex:1;min-width:200px;padding:7px 12px;border:1px solid var(--border);border-radius:8px;outline:none;font-size:13px"
+               onkeydown="if(event.key==='Enter')loadEmbed()">
+        <button class="btn btn-sm" onclick="loadEmbed()">前往</button>
+        <a class="btn btn-sm" id="embedOpen" target="_blank" rel="noopener">↗ 新窗口打开</a>
+      </div>
+      <div id="embedTip" style="padding:10px 14px;background:#eff6ff;border-bottom:1px solid #dbeafe;font-size:12.5px;color:var(--text-2)"></div>
+      <iframe id="embedFrame" style="width:100%;height:62vh;border:none;background:#fff" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 330px;gap:16px;align-items:stretch;margin-top:12px">
+      <div class="card" style="padding:8px 18px" id="searchView">
+        <div class="sel-bar">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="selAll" onchange="toggleSelAll(this)"> 全选本页
+          </label>
+          <span style="color:var(--text-3)">勾选跨页保留 · 已选 <b id="selTotal" style="color:var(--primary)">0</b> 篇</span>
+        </div>
+        <div id="resultList"></div>
+        <div class="pager" id="browsePager"></div>
+      </div>
+      <!-- 收藏网站：右侧论文详情面板 -->
+      <aside class="lib-col" style="padding:14px;min-height:320px" id="brDetail">
+        <div style="color:var(--text-3);font-size:13px;text-align:center;padding:60px 0" id="brDetailEmpty">
+          点击左侧检索结果<br>在右侧查看论文详情
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- ============ 视图三：阅读器（内嵌，收藏网站右边）二级标签：论文详情 | 原文 ============ -->
+  <div class="hidden lib-view" id="viewReader" style="display:flex;flex-direction:column;padding:12px 18px">
+    <div class="card" style="padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex:none">
+      <b style="font-size:14px" data-i18n="rd_title">📖 阅读器</b>
+      <select id="readerPick" onchange="readerPickChange()" style="padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:13px">
+        <option value="" data-i18n="rd_pick">选择论文…</option>
+      </select>
+      <span id="readerLive" style="color:var(--text-3);font-size:12.5px" data-i18n="rd_not_started">未开始阅读</span>
+      <div style="flex:1"></div>
+      <span id="readerContinue" class="hidden" style="font-size:12.5px;background:#fefce8;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:4px 10px"></span>
+    </div>
+
+    <!-- 阅读器二级标签：论文详情（左） | 原文 -->
+    <div style="display:flex;gap:2px;margin-top:10px;flex:none;border-bottom:1px solid var(--border)">
+      <button id="rs-detail" class="active" data-i18n="rd_detail" onclick="switchReaderView('detail')"
+        style="padding:8px 18px;font-size:13.5px;color:var(--primary);font-weight:700;border-bottom:2px solid var(--primary);background:transparent">📋 论文详情</button>
+      <button id="rs-reader" data-i18n="rd_original" onclick="switchReaderView('reader')"
+        style="padding:8px 18px;font-size:13.5px;color:var(--text-2);font-weight:500;border-bottom:2px solid transparent;background:transparent">📖 原文</button>
+    </div>
+
+    <!-- 二级视图：论文详情面板 -->
+    <div id="viewReaderDetail" style="flex:1;min-height:0;overflow-y:auto;margin-top:12px;padding:4px 2px">
+      <div style="color:var(--text-3);font-size:13px;text-align:center;padding:80px 0" id="viewReaderDetailEmpty" data-i18n="br_detail_empty">
+        从「📚 我的文献」或「⭐ 收藏网站」选择一篇论文<br>即可在左侧查看论文详情、右侧阅读原文
+      </div>
+    </div>
+
+    <!-- 二级视图：原文（内嵌阅读器） -->
+    <iframe id="readerFrame" title="原文阅读器" class="hidden"
+      style="flex:1;min-height:0;width:100%;border:1px solid var(--border);border-radius:12px;margin-top:10px;background:#fff"></iframe>
+  </div>
+
+  <!-- ============ 视图四：导入文献（本地文件 · 单个/批量 · 资料与收藏网站导入一致） ============ -->
+  <div class="hidden lib-view" id="viewImport" style="padding:16px 20px;overflow-y:auto">
+    <!-- 上传区 -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div id="impDrop" onclick="document.getElementById('impFile').click()"
+        style="border:2px dashed var(--border-2);border-radius:12px;padding:44px 20px;text-align:center;cursor:pointer;margin:16px;background:#fafbfe;transition:.15s"
+        onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border-2)'">
+        <div style="font-size:38px">📤</div>
+        <div style="font-weight:700;font-size:15px;margin-top:6px" data-i18n="imp_upload">点击选择文件上传（单个或批量）</div>
+        <div style="color:var(--text-3);font-size:12.5px;margin-top:4px" data-i18n="imp_upload_tip">支持 PDF / DOCX / TXT · 可多选 · 每个文件自动生成一张资料卡</div>
+        <input type="file" id="impFile" multiple accept=".pdf,.docx,.txt,.md" style="display:none" onchange="onImpFiles()">
+      </div>
+      <div id="impPickList" style="padding:0 16px 6px"></div>
+    </div>
+
+    <!-- 资料表单卡（每个文件一张，字段与收藏网站导入一致：类别/状态/标签/简介） -->
+    <div id="impForms" style="margin-top:14px"></div>
+
+    <!-- 批量导入底栏 -->
+    <div class="card" id="impFooter" style="padding:13px 18px;display:none;margin-top:14px;position:sticky;bottom:0;z-index:5">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span id="impCount" style="font-size:13px;color:var(--text-2)"></span>
+        <div style="flex:1"></div>
+        <button class="btn" onclick="impClearAll()">清空</button>
+        <button class="btn btn-primary" onclick="impImportAll()">✅ 批量导入全部</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 导入 modal（DOI/PDF） -->
+<div class="modal-mask" id="importModal">
+  <div class="modal">
+    <span class="close" onclick="closeModal('importModal')">✕</span>
+    <h3>导入文献</h3>
+    <div class="tabs">
+      <button class="active" onclick="switchTab(this,0)">DOI / arXiv ID</button>
+      <button onclick="switchTab(this,1)">上传 PDF</button>
+      <button onclick="goBrowseTab()">🌐 收藏网站</button>
+    </div>
+    <div class="field">
+      <label id="importLabel">输入 DOI 或 arXiv ID</label>
+      <input id="importInput" placeholder="例如 1706.03762">
+    </div>
+    <div id="pdfDrop" class="hidden" style="border:2px dashed var(--border-2);border-radius:12px;padding:34px;text-align:center;color:var(--text-3)">
+      <div style="font-size:36px">📄</div>点击或拖拽 PDF 到此处<br><span style="font-size:12px">（原型演示：解析元信息并入库）</span>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+      <button class="btn" onclick="closeModal('importModal')">取消</button>
+      <button class="btn btn-primary" onclick="fakeImport()">下一步：填写分类与简介</button>
+    </div>
+  </div>
+</div>
+
+<!-- 导入详情表单 modal（所属分类 / 标签 / 简介） -->
+<div class="modal-mask" id="importDetailModal">
+  <div class="modal" style="max-width:660px">
+    <span class="close" onclick="closeImportDetail()">✕</span>
+    <h3>📥 确认导入 <span id="idmCount" style="color:var(--text-3);font-size:13px;font-weight:400"></span></h3>
+    <div id="idmList" style="max-height:170px;overflow-y:auto;margin-bottom:14px"></div>
+    <div class="field">
+      <label>所属类别（文件夹）</label>
+      <select id="idmCat" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:#fff"></select>
+    </div>
+    <div class="field">
+      <label>阅读状态</label>
+      <select id="idmStatus" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:#fff"></select>
+    </div>
+    <div class="field">
+      <label>标签（点击多选，可自定义）</label>
+      <div class="tag-pick" id="idmTags"></div>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <input id="idmNewTag" placeholder="自定义标签，回车添加…" style="flex:1;padding:7px 12px;border:1px solid var(--border);border-radius:8px;outline:none"
+               onkeydown="if(event.key==='Enter'){addCustomTag();event.preventDefault()}">
+        <button class="btn btn-sm" onclick="addCustomTag()">添加</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>简介（用于快速了解论文内容）</label>
+      <div style="display:flex;gap:8px;margin-bottom:6px">
+        <textarea id="idmIntro" rows="2" placeholder="一句话说明这篇论文讲什么…" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;outline:none;resize:vertical"></textarea>
+        <button class="btn btn-sm" style="align-self:flex-end;white-space:nowrap" onclick="aiIntro()">🤖 AI 生成</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn" onclick="closeImportDetail()">取消</button>
+      <button class="btn btn-primary" onclick="confirmImport()">✅ 确认导入</button>
+    </div>
+  </div>
+</div>
+
+<!-- 分享 modal（分享给个人/好友/团队） -->
+<div class="modal-mask" id="shareModal">
+  <div class="modal" style="max-width:520px">
+    <span class="close" onclick="closeShareModal()">✕</span>
+    <h3>📤 分享论文 <span id="sharePaperTitle" style="font-size:13px;color:var(--text-3);font-weight:400"></span></h3>
+    <div class="field"><label>分享给用户 / 好友（搜索昵称，分享后自动成为好友）</label>
+      <input id="shareUserQ" placeholder="搜索昵称，如：刘华成 / 张德勋…" oninput="renderShareUsers(this.value)"
+             style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;outline:none">
+      <div id="shareUsers" style="margin-top:8px"></div>
+    </div>
+    <div class="field" style="margin-top:10px"><label>分享给我加入的团队</label>
+      <div id="shareTeams" style="margin-top:8px"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- 文献库内简介快捷编辑 modal -->
+<div class="modal-mask" id="introLibModal">
+  <div class="modal">
+    <span class="close" onclick="closeIntroEditLib()">✕</span>
+    <h3>✏️ 编辑简介 <span id="ilTitle" style="font-size:13px;color:var(--text-3);font-weight:400"></span></h3>
+    <textarea id="introLibEdit" rows="7" maxlength="1000" oninput="countIntroLib()"
+      style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;outline:none;resize:vertical;font-size:14px;line-height:1.7"></textarea>
+    <div style="text-align:right;color:var(--text-3);font-size:12px;margin-top:4px"><span id="introLibCount">0</span> / 1000</div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px">
+      <button class="btn" onclick="closeIntroEditLib()">取消</button>
+      <button class="btn btn-primary" onclick="saveIntroEditLib()">💾 保存简介</button>
+    </div>
+  </div>
+</div>
+
+<script src="data.js?v=2301"></script>
+<script src="user-menu.js?v=2301"></script>
+<script src="pager.js?v=2301"></script>
+<script>
+/* ================= 通用 ================= */
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2400)}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+function openModal(id){document.getElementById(id).classList.add('show')}
+function goBrowseTab(){ switchLibTab('browse') }
+
+/* ================= Tab 切换 ================= */
+function switchLibTab(which){
+  document.getElementById('tab-lib').classList.toggle('active', which==='lib');
+  document.getElementById('tab-browse').classList.toggle('active', which==='browse');
+  document.getElementById('tab-reader').classList.toggle('active', which==='reader');
+  document.getElementById('tab-import').classList.toggle('active', which==='import');
+  document.getElementById('viewLib').classList.toggle('hidden', which!=='lib');
+  document.getElementById('viewBrowse').classList.toggle('hidden', which!=='browse');
+  document.getElementById('viewReader').classList.toggle('hidden', which!=='reader');
+  document.getElementById('viewImport').classList.toggle('hidden', which!=='import');
+  if(which==='browse') renderSrcGrid();
+  if(which==='reader' && !readerLoaded) loadReader(null);
+}
+
+/* ================= 阅读器 Tab（内嵌，收藏网站右边）：二级标签 论文详情 | 原文 ================= */
+var readerLoaded = false;
+var curReaderPid = null;
+var readerView = 'detail';     // detail | reader
+
+function switchReaderView(v){
+  readerView = v;
+  document.getElementById('rs-detail').classList.toggle('active', v==='detail');
+  document.getElementById('rs-reader').classList.toggle('active', v==='reader');
+  document.getElementById('rs-detail').style.cssText = v==='detail'
+    ? 'padding:8px 18px;font-size:13.5px;color:var(--primary);font-weight:700;border-bottom:2px solid var(--primary);background:transparent'
+    : 'padding:8px 18px;font-size:13.5px;color:var(--text-2);font-weight:500;border-bottom:2px solid transparent;background:transparent';
+  document.getElementById('rs-reader').style.cssText = v==='reader'
+    ? 'padding:8px 18px;font-size:13.5px;color:var(--primary);font-weight:700;border-bottom:2px solid var(--primary);background:transparent'
+    : 'padding:8px 18px;font-size:13.5px;color:var(--text-2);font-weight:500;border-bottom:2px solid transparent;background:transparent';
+  document.getElementById('viewReaderDetail').classList.toggle('hidden', v!=='detail');
+  document.getElementById('readerFrame').classList.toggle('hidden', v!=='reader');
+  if(v==='reader' && curReaderPid!=null && !readerLoaded) loadReaderFrame(curReaderPid);
+}
+
+/* 论文详情二级视图：完整版（与详情页一致：AI 精读总结/中英摘要/术语表/相关论文） */
+function detailFullHtml(pid){
+  var p = PM.papers[pid];
+  if(!p) return '';
+  var s = p.summary || {};
+  var stBadge = p.status==='读完' ? 'badge-green' : p.status==='想读' ? 'badge-orange' : 'badge-blue';
+  var noteCount = PM.notes ? PM.notes.filter(function(n){return n.paper===pid}).length : 0;
+  var glossaryRows = (p.glossary||[]).map(function(g){
+    return '<tr><td style="padding:7px 10px;font-weight:600;width:170px">'+g[0]+'</td><td style="padding:7px 10px;color:var(--primary);width:130px">'+g[1]+'</td><td style="padding:7px 10px;color:var(--text-2);font-size:12.5px">'+g[2]+'</td></tr>';
+  }).join('');
+  var relatedRows = (PM.related||[]).map(function(r){
+    var idx = PM.papers.findIndex(function(x){return x.id===r[1]});
+    var p2 = idx>=0 ? PM.papers[idx] : null;
+    return '<div style="padding:11px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;cursor:pointer" onclick="'+(p2?'location.href=\'library.html?p='+p2.id+'\'':'toast(\'演示数据，详情未收录\')')+'">'+
+      '<span style="color:var(--text-3)">▸</span><span style="flex:1">'+r[0]+'</span>'+
+      (p2?'<span class="badge badge-gray">'+p2.year+'</span><button class="btn btn-sm">查看</button>':'<span class="badge badge-gray">'+PM.t('rd_related_ext')+'</span>')+
+    '</div>';
+  }).join('');
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+
+      '<span class="badge '+stBadge+'">'+p.status+'</span>'+
+      '<span class="badge badge-purple">'+p.cat+'</span>'+
+      '<span class="badge badge-gray">'+p.year+'</span>'+
+      '<span class="badge badge-green">被引 '+(p.cites/10000).toFixed(1)+'万</span>'+
+    '</div>'+
+    '<div style="font-size:17px;font-weight:700;line-height:1.5">'+p.title+'</div>'+
+    '<div style="color:var(--primary);font-size:13px;margin-top:4px">'+p.titleZh+'</div>'+
+    '<div class="intro-tag" style="margin:10px 0">'+PM.getIntro(p)+'</div>'+
+    '<div style="color:var(--text-2);font-size:13px">'+p.authors+'</div>'+
+    '<div style="color:var(--text-3);font-size:12px;margin-top:2px">'+p.venue+' · DOI: '+p.doi+'</div>'+
+    '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">'+
+      '<button class="btn btn-primary btn-sm" onclick="switchReaderView(\'reader\')">📖 阅读原文</button>'+
+      '<button class="btn btn-sm" id="rdStarBtn" onclick="toggleReaderStar('+pid+')">'+(p.starred?PM.t('btn_starred'):PM.t('btn_star'))+'</button>'+
+      '<button class="btn btn-sm" onclick="copyReaderCite('+pid+')">'+PM.t('btn_copy_cite')+'</button>'+
+      '<button class="btn btn-sm" onclick="openIntroEditLib('+pid+')">'+PM.t('btn_edit_intro')+'</button>'+
+    '</div>'+
+    /* AI 精读总结 */
+    '<div class="section-title" style="margin-top:22px">'+PM.t('rd_ai_summary')+'</div>'+
+    '<div class="card" style="padding:16px">'+
+      '<div style="font-weight:700;font-size:13.5px;color:var(--text-2)">'+PM.t('rd_core')+'</div>'+
+      '<div style="margin-top:6px;font-size:14px;line-height:1.8">'+s.core+'</div>'+
+      '<div style="margin-top:12px"><b>'+PM.t('rd_problem')+'：</b>'+s.problem+'</div>'+
+      '<div style="margin-top:12px"><b>'+PM.t('rd_method')+'：</b><ul style="margin:6px 0 0 18px;line-height:1.8">'+(s.method||[]).map(function(m){return '<li>'+m+'</li>'}).join('')+'</ul></div>'+
+      '<div style="margin-top:12px"><b>'+PM.t('rd_result')+'：</b>'+s.result+'</div>'+
+      '<div style="margin-top:12px"><b>'+PM.t('rd_limit')+'：</b>'+s.limit+'</div>'+
+    '</div>'+
+    /* 中英摘要 */
+    '<div class="section-title" style="margin-top:22px">'+PM.t('rd_abs')+'</div>'+
+    '<div class="card" style="padding:16px">'+
+      '<b style="color:var(--text-2)">'+PM.t('rd_abs_zh')+'</b><div style="margin-top:4px;line-height:1.8">'+p.absZh+'</div>'+
+      '<div style="border-top:1px dashed var(--border);padding-top:12px;margin-top:12px"><b style="color:var(--text-2)">'+PM.t('rd_abs_en')+'</b><div style="margin-top:4px;color:var(--text-2);line-height:1.8">'+p.abs+'</div></div>'+
+    '</div>'+
+    /* 术语表 */
+    '<div class="section-title" style="margin-top:22px">'+PM.t('rd_glossary')+'</div>'+
+    '<div class="card" style="padding:6px"><table style="width:100%;border-collapse:collapse">'+(glossaryRows||'<tr><td style="padding:10px;color:var(--text-3)">暂无术语</td></tr>')+'</table></div>'+
+    /* 相关论文 */
+    '<div class="section-title" style="margin-top:22px">'+PM.t('rd_related')+'</div>'+
+    '<div class="card" style="padding:6px">'+(relatedRows||'<div style="padding:10px;color:var(--text-3)">暂无相关</div>')+'</div>'+
+    '<div style="margin-top:14px;font-size:12px;color:var(--text-3)">'+PM.t('rd_read_pct')+' '+p.read+'% · 📝 '+noteCount+' '+PM.t('rd_notes')+' · '+PM.t('lib_filter_tag')+'：'+p.tags.join('、')+'</div>';
+}
+function toggleReaderStar(pid){
+  var p = PM.papers[pid];
+  p.starred = !p.starred;
+  document.getElementById('rdStarBtn').textContent = p.starred ? '⭐ 已收藏' : '☆ 收藏';
+  toast(p.starred ? '已收藏' : '已取消收藏');
+}
+function copyReaderCite(pid){
+  var p = PM.papers[pid];
+  var txt = p.authors.split(',')[0]+' et al. "'+p.title+'" ('+p.year+').';
+  navigator.clipboard && navigator.clipboard.writeText(txt);
+  toast('📋 引用已复制（GB/T 7714 简易格式）');
+}
+
+/* 论文详情二级视图 */
+function renderReaderDetail(pid){
+  curReaderPid = pid;
+  var empty = document.getElementById('viewReaderDetailEmpty');
+  if(empty) empty.style.display = 'none';   // 首次渲染后该空状态节点被替换，需判空
+  document.getElementById('viewReaderDetail').innerHTML = detailFullHtml(pid);
+  document.getElementById('readerPick').value = String(pid);
+}
+
+/* 原文二级视图：加载内嵌阅读器 */
+function loadReaderFrame(pid){
+  var mark = new URLSearchParams(location.search).get('mark') || '';
+  document.getElementById('readerFrame').src = 'reader.html?p='+pid+'&embed=1'+(mark? '&mark='+mark : '');
+  readerLoaded = true;
+}
+
+/* 打开阅读器：默认进入「原文」直接读；「论文详情」标签可随时切回 */
+function loadReader(pid){
+  var last = null;
+  try{ last = JSON.parse(localStorage.getItem('pm_lastread')||'null') }catch(e){}
+  if(pid == null) pid = (last && last.pid!=null && PM.papers[last.pid]) ? last.pid : 0;
+  renderReaderDetail(Number(pid));
+  loadReaderFrame(Number(pid));
+  switchReaderView('reader');
+  /* 继续阅读横幅 */
+  var cont = document.getElementById('readerContinue');
+  if(last && last.pid!=null && Number(last.pid)===Number(pid) && last.pct>0 && last.pct<100){
+    cont.classList.remove('hidden');
+    cont.innerHTML = '⏩ 继续阅读：<b>'+last.title.slice(0,24)+'…</b>（上次读到 '+last.pct+'%）<button class="btn btn-sm btn-primary" style="margin-left:8px" onclick="loadReader('+last.pid+')">继续</button>';
+  } else cont.classList.add('hidden');
+}
+function goReader(pid){           // 从我的文献/收藏网站面板调用
+  switchLibTab('reader');
+  loadReader(Number(pid));
+}
+function readerPickChange(){
+  var v = document.getElementById('readerPick').value;
+  if(v!=='') loadReader(v);
+}
+/* 阅读器内嵌上报：更新工具条实时状态 */
+window.addEventListener('message', function(e){
+  if(e.data && e.data.type==='pm-reader-report'){
+    document.getElementById('readerLive').textContent = '正在阅读：'+e.data.title+' · 已读 '+e.data.pct+'%';
+  }
+});
+
+/* ================= 导入 modal（DOI/PDF） ================= */
+function switchTab(btn,idx){
+  document.querySelectorAll('#importModal .tabs button').forEach(function(b){b.classList.remove('active')});
+  btn.classList.add('active');
+  document.getElementById('pdfDrop').classList.toggle('hidden',idx===0);
+  document.getElementById('importLabel').textContent = idx===0 ? '输入 DOI 或 arXiv ID' : '上传本地 PDF 文件';
+  if(idx===1){
+    document.getElementById('pdfDrop').innerHTML = '<div style="font-size:36px">📄</div>点击或拖拽 PDF 到此处<br>'+
+      '<span style="font-size:12px">可提取文本直接入库；扫描件将调用 OCR 引擎：'+ocrEngineName()+'</span>';
+  } else {
+    document.getElementById('pdfDrop').innerHTML = '<div style="font-size:36px">📄</div>点击或拖拽 PDF 文件到此处<br><span style="font-size:12px">（原型演示：解析元信息并入库）</span>';
+  }
+}
+function ocrEngineName(){
+  try{
+    var o = JSON.parse(localStorage.getItem('pm_settings')||'{}').ocr||{};
+    return o.mode==='custom' ? (o.provider||'自定义接口') : '内置 PaddleOCR';
+  }catch(e){ return '内置 PaddleOCR' }
+}
+function fakeImport(){
+  var v=document.getElementById('importInput').value.trim();
+  if(!v){ toast('请先填写 DOI 或 arXiv ID'); return }
+  closeModal('importModal');
+  /* 演示：把导入项带入详情表单 */
+  var t = v.indexOf('.')>0 && v.length<12 ? 'arXiv '+v : 'DOI '+v;
+  openImportDetail([{id:t, title:t+' 对应论文（演示自动抓取元数据）'}]);
+}
+
+/* ================= 我的文献视图 ================= */
+var lib = {folder:'全部', page:1, size:10, data:[]};
+
+/* ============ 分享论文（给个人/好友/团队，记录到社区「分享管理」） ============ */
+var sharePid = -1;
+function openShareModal(pid){
+  var p = PM.papers[pid];
+  if(!p) return;
+  sharePid = pid;
+  document.getElementById('sharePaperTitle').textContent = '《'+p.title.slice(0,28)+(p.title.length>28?'…':'')+'》';
+  renderShareUsers('');
+  renderShareTeams();
+  document.getElementById('shareModal').style.display='flex';
+}
+function closeShareModal(){ document.getElementById('shareModal').style.display='none' }
+function renderShareUsers(q){
+  var myName = PM.getUser().name;
+  var users = (PM.demoUsers||[]).filter(function(u){
+    return u.name!==myName && (!q || u.name.indexOf(q)>=0);
+  });
+  var friends = [];
+  try{ friends = JSON.parse(localStorage.getItem('pm_friends')||'[]') }catch(e){}
+  document.getElementById('shareUsers').innerHTML = users.length ? users.map(function(u){
+    var isFriend = friends.indexOf(u.name)>=0;
+    return '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:#fff">'+
+      '<span style="font-size:18px">'+u.avatar+'</span>'+
+      '<div style="flex:1"><b style="font-size:13px">'+u.name+'</b>'+(isFriend?' <span class="badge badge-blue" style="font-size:10px">好友</span>':'')+
+      '<div style="font-size:11.5px;color:var(--text-3)">'+u.role+' · '+u.dir+'</div></div>'+
+      '<button class="btn btn-sm btn-primary" onclick="doShareUser(\''+u.name+'\')">📤 分享</button>'+
+    '</div>';
+  }).join('') : '<div style="color:var(--text-3);font-size:12.5px;padding:8px 0">没有匹配的用户</div>';
+}
+function renderShareTeams(){
+  var myName = PM.getUser().name;
+  var teams = [];
+  try{ teams = JSON.parse(localStorage.getItem('pm_teams')||'[]') }catch(e){}
+  var joined = teams.filter(function(t){ return t.members.indexOf(myName)>=0 });
+  document.getElementById('shareTeams').innerHTML = joined.length ? joined.map(function(t){
+    return '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:#fff">'+
+      '<span style="font-size:18px">👥</span>'+
+      '<div style="flex:1"><b style="font-size:13px">'+t.name+'</b><div style="font-size:11.5px;color:var(--text-3)">'+t.members.length+' 人 · 队长 '+t.owner+'</div></div>'+
+      '<button class="btn btn-sm btn-primary" onclick="doShareTeam(\''+t.id+'\',\''+t.name.replace(/'/g,'')+'\')">📤 分享</button>'+
+    '</div>';
+  }).join('') : '<div style="color:var(--text-3);font-size:12.5px;padding:8px 0">还未加入任何团队，去「社区交流 → 团队」看看吧</div>';
+}
+function doShareUser(name){
+  var p = PM.papers[sharePid];
+  if(!p) return;
+  var friends = [];
+  try{ friends = JSON.parse(localStorage.getItem('pm_friends')||'[]') }catch(e){}
+  if(friends.indexOf(name)<0){ friends.push(name); localStorage.setItem('pm_friends', JSON.stringify(friends)) }
+  addShareOutLocal(sharePid, 'user', name);
+  closeShareModal();
+  toast('📤 已分享《'+p.title.slice(0,26)+'…》给 '+name+'（已自动加为好友）');
+}
+function doShareTeam(tid, tname){
+  var p = PM.papers[sharePid];
+  if(!p) return;
+  addShareOutLocal(sharePid, 'team', tname);
+  closeShareModal();
+  toast('📤 已分享《'+p.title.slice(0,26)+'…》到团队「'+tname+'」');
+}
+/* 分享记录写入 localStorage（社区页「分享管理」读取同一数据源） */
+function addShareOutLocal(paperId, targetType, targetName){
+  var list = [];
+  try{ list = JSON.parse(localStorage.getItem('pm_shares_out')||'[]') }catch(e){}
+  list.unshift({id:'so'+Date.now(), paperId:paperId, targetType:targetType, targetName:targetName, ts:Date.now()});
+  try{ localStorage.setItem('pm_shares_out', JSON.stringify(list)) }catch(e){}
+}
+
+(function(){
+  var html='';
+  PM.folders.forEach(function(f){
+    var count = f==='全部' ? PM.papers.filter(function(p){return !p._trashed}).length
+      : f==='收藏' ? PM.papers.filter(function(p){return p.starred && !p._trashed}).length
+      : PM.papers.filter(function(p){return p.cat===f && !p._trashed}).length;
+    var star = f==='收藏' ? ' ⭐' : '';
+    html += '<div class="folder-item" data-f="'+f+'" onclick="pickFolder(this)" '+
+      'style="padding:7px 10px;border-radius:8px;cursor:pointer;font-size:14px;color:var(--text-2);display:flex;justify-content:space-between"'+
+      '><span>'+f+star+'</span><span style="color:var(--text-3);font-size:12px">'+count+'</span></div>';
+  });
+  /* 回收站 */
+  var trashCount = Object.keys(getTrash()).length;
+  html += '<div class="folder-item" data-f="回收站" onclick="pickFolder(this)" '+
+    'style="padding:7px 10px;border-radius:8px;cursor:pointer;font-size:14px;color:var(--text-2);display:flex;justify-content:space-between;margin-top:6px;border-top:1px dashed var(--border);padding-top:10px"'+
+    '><span>🗑 回收站</span><span style="color:var(--text-3);font-size:12px">'+trashCount+'</span></div>';
+  document.getElementById('folderList').innerHTML = html;
+  pickFolder(document.querySelector('.folder-item'));
+})();
+
+function pickFolder(el){
+  document.querySelectorAll('.folder-item').forEach(function(x){x.style.background='transparent';x.style.color='var(--text-2)'});
+  el.style.background='var(--primary-light)';el.style.color='var(--primary)';el.style.fontWeight='600';
+  lib.folder = el.dataset.f;
+  lib.page = 1;
+  renderLibList();
+}
+/* ================= 回收站（软删除：标记 _trashed + pm_trash 副本） ================= */
+function getTrash(){ try{ return JSON.parse(localStorage.getItem('pm_trash')||'{}') }catch(e){ return {} } }
+function saveTrash(t){ try{ localStorage.setItem('pm_trash', JSON.stringify(t)) }catch(e){} }
+function trashPaper(btn, pid){
+  var p = PM.papers[pid];
+  if(!p) return;
+  if(!confirm('将《'+p.title.slice(0,40)+(p.title.length>40?'…':'')+'》移入回收站？可在左侧「🗑 回收站」恢复。')) return;
+  var trash = getTrash();
+  var copy = JSON.parse(JSON.stringify(p));
+  copy._delAt = Date.now();
+  trash[pid] = copy;
+  saveTrash(trash);
+  p._trashed = true;
+  renderFolderCounts();
+  toast('🗑 已移入回收站（可在左侧「回收站」恢复）');
+  renderLibList();
+}
+function restorePaper(pid){
+  var trash = getTrash();
+  if(!trash[pid]) return;
+  delete trash[pid];
+  saveTrash(trash);
+  if(PM.papers[pid]) PM.papers[pid]._trashed = false;
+  renderFolderCounts();
+  toast('↩ 已恢复《'+PM.papers[pid].title.slice(0,30)+'…》');
+  renderTrash();
+}
+function purgePaper(pid){
+  var trash = getTrash();
+  if(!trash[pid]) return;
+  if(!confirm('彻底删除《'+(trash[pid].title||'').slice(0,40)+'…》？不可恢复。')) return;
+  delete trash[pid];
+  saveTrash(trash);
+  if(PM.papers[pid]) PM.papers[pid]._trashed = true;   /* 标记保持（数据层不可恢复） */
+  renderFolderCounts();
+  toast('🗑 已彻底删除');
+  renderTrash();
+}
+function renderFolderCounts(){
+  document.querySelectorAll('.folder-item').forEach(function(el){
+    var f = el.dataset.f;
+    if(f==='回收站'){ el.querySelector('span:last-child').textContent = Object.keys(getTrash()).length; return }
+    var count = f==='全部' ? PM.papers.filter(function(p){return !p._trashed}).length
+      : f==='收藏' ? PM.papers.filter(function(p){return p.starred && !p._trashed}).length
+      : PM.papers.filter(function(p){return p.cat===f && !p._trashed}).length;
+    el.querySelector('span:last-child').textContent = count;
+  });
+}
+function renderTrash(){
+  var trash = getTrash();
+  document.getElementById('libTitle').firstChild.textContent = '回收站';
+  document.getElementById('libCount').textContent = '已删除 '+Object.keys(trash).length+' 篇';
+  document.getElementById('emptyLib').classList.toggle('hidden', Object.keys(trash).length>0);
+  var list = Object.keys(trash).map(function(k){ return trash[k] }).sort(function(a,b){ return b._delAt-a._delAt });
+  document.getElementById('libList').innerHTML = list.length ? list.map(function(p){
+    return '<div class="paper-card" style="margin:8px 0;display:flex;gap:14px;align-items:flex-start;opacity:.8">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="title" style="text-decoration:line-through">'+p.title+'</div>'+
+        '<div class="authors">'+p.authors+'</div>'+
+        '<div class="venue">'+p.venue+' · 删除于 '+new Date(p._delAt).toLocaleString()+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:6px;align-items:center;min-width:150px;justify-content:flex-end">'+
+        '<button class="btn btn-sm btn-primary" onclick="restorePaper('+p.id+')">↩ 恢复</button>'+
+        '<button class="btn btn-sm" style="color:var(--danger)" onclick="purgePaper('+p.id+')">🗑 彻底删除</button>'+
+      '</div></div>';
+  }).join('') : '<div class="empty" style="padding:50px 0;text-align:center;color:var(--text-3)"><div class="big">🗑</div>回收站是空的</div>';
+  document.getElementById('libPager').innerHTML = '';
+}
+function applyFilter(){ lib.page = 1; renderLibList() }
+
+function getLibList(){
+  var q = new URLSearchParams(location.search).get('q') || '';
+  var status = document.getElementById('statusFilter').value;
+  var year = document.getElementById('yearFilter').value;
+  var tag = document.getElementById('tagFilter').value;
+  var list = PM.papers.filter(function(p){
+    if(p._trashed) return false;   /* 回收站中的论文不参与列表 */
+    if(lib.folder!=='全部' && p.cat!==lib.folder && !(lib.folder==='收藏'&&p.starred)) return false;
+    if(status && p.status!==status) return false;
+    if(year && String(p.year)!==year) return false;
+    if(tag && p.tags.indexOf(tag)<0) return false;
+    if(q && p.title.toLowerCase().indexOf(q.toLowerCase())<0 && p.abs.toLowerCase().indexOf(q.toLowerCase())<0) return false;
+    return true;
+  });
+  var sort = document.getElementById('sortBy').value;
+  list.sort(function(a,b){
+    if(sort==='cites') return b.cites-a.cites;
+    if(sort==='year') return b.year-a.year;
+    return b.read-a.read;
+  });
+  return {list:list, q:q};
+}
+
+function renderLibList(){
+  if(lib.folder==='回收站'){ renderTrash(); return }
+  var g = getLibList();
+  lib.data = g.list;
+  document.getElementById('libTitle').firstChild.textContent = lib.folder + ' 文献';
+  document.getElementById('libCount').textContent = g.q ? '（搜索「'+g.q+'」）' : '共 '+lib.data.length+' 篇';
+  document.getElementById('emptyLib').classList.toggle('hidden', lib.data.length>0);
+
+  var total = lib.data.length, pages = Math.max(1, Math.ceil(total/lib.size));
+  if(lib.page > pages) lib.page = pages;
+  var slice = lib.data.slice((lib.page-1)*lib.size, lib.page*lib.size);
+
+  document.getElementById('libList').innerHTML = slice.map(function(p){
+    var hl = p.starred ? ' ⭐' : '';
+    var stBadge = p.status==='读完' ? 'badge-green' : p.status==='想读' ? 'badge-orange' : 'badge-blue';
+    return '<div class="paper-card" data-id="'+p.id+'" style="margin:8px 0;display:flex;gap:14px;align-items:flex-start'+(lib.sel===p.id?';background:var(--primary-light)':'')+'">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="title">'+p.title+hl+'</div>'+
+        '<div class="intro-tag" style="display:flex;align-items:center;gap:6px" title="点击详情查看完整简介">'+
+          '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+PM.getIntro(p)+'</span>'+
+          '<span class="intro-edit" onclick="event.stopPropagation();openIntroEditLib('+p.id+')">✏️</span>'+
+        '</div>'+
+        '<div class="authors">'+p.authors+'</div>'+
+        '<div class="venue">'+p.venue+' · 被引 '+(p.cites/10000).toFixed(1)+'万</div>'+
+        '<div class="meta-row">'+
+          '<span class="badge '+stBadge+'">'+p.status+'</span>'+
+          '<span class="badge badge-purple">'+p.cat+'</span>'+
+          p.tags.map(function(t){return '<span class="tag">'+t+'</span>'}).join('')+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:150px">'+
+        '<div style="display:flex;align-items:center;gap:8px;width:100%">'+
+          '<span style="font-size:12px;color:var(--text-3)">'+p.read+'%</span><div class="progress"><i style="width:'+p.read+'%"></i></div>'+
+        '</div>'+
+        '<div style="display:flex;gap:6px">'+
+          '<button class="btn btn-sm btn-primary" onclick="goReader('+p.id+')">'+PM.t('btn_continue')+'</button>'+
+          '<button class="btn btn-sm" onclick="toggleFolder(this,'+p.id+')">📁</button>'+
+          '<button class="btn btn-sm" onclick="toggleStar(this,'+p.id+')">⭐</button>'+
+          '<button class="btn btn-sm" title="移入回收站" style="color:var(--text-3)" onclick="trashPaper(this,'+p.id+')">🗑</button>'+
+        '</div>'+
+      '</div></div>';
+  }).join('');
+
+  renderPager({
+    el: document.getElementById('libPager'),
+    page: lib.page, pageSize: lib.size, total: total,
+    onChange: function(p){ lib.page = p; renderLibList(); document.querySelector('main').scrollIntoView({behavior:'smooth'}); },
+    onSizeChange: function(s){ lib.size = s; lib.page = 1; renderLibList(); }
+  });
+}
+function toggleStar(btn,id){
+  var p=PM.papers[id];p.starred=!p.starred;
+  toast(p.starred?'已收藏 '+p.title:'已取消收藏');
+  renderLibList();
+}
+
+/* ============ 我的文献：右侧论文详情面板 ============ */
+/* 通用详情渲染：我的文献右侧面板 与 阅读器「论文详情」二级标签共用 */
+function detailHtml(pid, readerMode){
+  var p = PM.papers[pid];
+  if(!p) return '';
+  var stBadge = p.status==='读完' ? 'badge-green' : p.status==='想读' ? 'badge-orange' : 'badge-blue';
+  var noteCount = PM.notes ? PM.notes.filter(function(n){return n.paper===pid}).length : 0;
+  var readBtn = readerMode
+    ? '<button class="btn btn-primary btn-sm" onclick="switchReaderView(\'reader\')">📖 阅读原文</button>'
+    : '<button class="btn btn-primary btn-sm" onclick="goReader('+pid+')">'+PM.t('btn_read_paper')+'</button>';
+  return '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+
+      '<span class="badge '+stBadge+'">'+p.status+'</span>'+
+      '<span class="badge badge-purple">'+p.cat+'</span>'+
+    '</div>'+
+    '<div style="font-size:15px;font-weight:700;line-height:1.45">'+p.title+'</div>'+
+    '<div style="color:var(--primary);font-size:12.5px;margin-top:4px">'+p.titleZh+'</div>'+
+    '<div class="intro-tag" style="margin:10px 0">'+PM.getIntro(p)+'</div>'+
+    '<div style="color:var(--text-2);font-size:12.5px">'+p.authors+'</div>'+
+    '<div style="color:var(--text-3);font-size:12px;margin-top:2px">'+p.venue+' · '+p.year+' · 被引 '+(p.cites/10000).toFixed(1)+'万 · 标签：'+p.tags.join('、')+'</div>'+
+    '<div style="margin-top:12px;background:#f8fafc;border-radius:8px;padding:10px 12px;font-size:13px;color:var(--text-2);line-height:1.7">💡 AI 总结：'+p.summary.core+'</div>'+
+    '<div style="margin-top:12px;font-size:12.5px;color:var(--text-3)"><b style="color:var(--text-2)">摘要</b></div>'+
+    '<div style="margin-top:4px;font-size:13px;color:var(--text-2);line-height:1.7">'+p.abs+'</div>'+
+    '<div style="margin-top:10px;font-size:12px;color:var(--text-3)">已读 '+p.read+'% · 📝 '+noteCount+' 条笔记</div>'+
+    '<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">'+
+      readBtn+
+      '<button class="btn btn-sm" onclick="openIntroEditLib('+pid+')">'+PM.t('btn_edit_intro')+'</button>'+
+      '<button class="btn btn-sm" onclick="openShareModal('+pid+')">📤 分享</button>'+
+      '<button class="btn btn-sm" title="团队共享（正式版）" onclick="toast(\'👥 团队共享：正式版支持共享文献库、术语与笔记（见数据库设计 第8章）\')">👥 共享</button>'+
+    '</div>';
+}
+function showLibDetail(pid){
+  var p = PM.papers[pid];
+  if(!p) return;
+  lib.sel = pid;
+  var empty = document.getElementById('libDetailEmpty');
+  if(empty) empty.style.display = 'none';   // 首次渲染后该空状态节点被 innerHTML 替换删除，需判空
+  document.getElementById('libDetail').innerHTML = detailHtml(pid, false);
+  renderLibList();
+}
+function libMove(pid, dir){}
+function toggleFolder(btn,id){
+  var p=PM.papers[id];
+  var order=PM.statuses.slice();
+  var cur=order.indexOf(p.status); p.status = order[(cur+1)%order.length];
+  toast('阅读状态 → 「'+p.status+'」（演示：真实产品为状态选择器）');
+  renderLibList();
+}
+
+/* ============ 简介快捷编辑（卡片 ✏️） ============ */
+var introEditId = -1;
+function openIntroEditLib(pid){
+  introEditId = pid;
+  var p = PM.papers[pid];
+  document.getElementById('ilTitle').textContent = '— '+p.title.slice(0,30)+'…';
+  document.getElementById('introLibEdit').value = PM.getIntro(p);
+  countIntroLib();
+  openModal('introLibModal');
+  setTimeout(function(){ document.getElementById('introLibEdit').focus() }, 100);
+}
+function closeIntroEditLib(){ closeModal('introLibModal') }
+function countIntroLib(){ document.getElementById('introLibCount').textContent = document.getElementById('introLibEdit').value.length }
+function saveIntroEditLib(){
+  var t = document.getElementById('introLibEdit').value.trim();
+  if(!t){ toast('简介不能为空'); return }
+  PM.setIntro(introEditId, t);
+  closeIntroEditLib();
+  renderLibList();
+  toast('✅ 简介已保存（全站卡片同步生效）');
+}
+
+/* ================= 收藏网站视图 ================= */
+var br = {src:0, page:1, size:10, imported:{}, selected:{}, filtered:[]};
+var LS_KEY = 'pm_custom_sources';
+
+function loadSources(){
+  /* 用户级收藏网站：新注册用户自动获得默认收藏网站（6 个预置） */
+  br.sources = PM.getUserSources();
+}
+function saveCustom(){
+  PM.setUserSources(br.sources);
+}
+function renderSrcGrid(){
+  if(!br.sources) loadSources();
+  var html = br.sources.map(function(s,i){
+    var del = s.type==='custom'
+      ? '<span class="del" title="删除该网站" onclick="event.stopPropagation();delSource('+i+')">✕</span>' : '';
+    var cust = s.type==='custom' ? '<span class="cust-tag">自定义</span>' : '<span class="cust-tag" style="background:#eff6ff;color:#2563eb">默认</span>';
+    var res = s.resolved
+      ? '<span class="badge badge-green" style="font-size:10px;margin-left:4px">✓ 已解析</span>'
+      : '<span class="badge badge-orange" style="font-size:10px;margin-left:4px">🔌 待接入</span>';
+    return '<div class="src-card'+(i===br.src?' active':'')+'" onclick="pickSrc('+i+')">'+
+      del+'<div class="nm">'+s.icon+' '+s.name+cust+res+'</div>'+
+      '<div class="ds">'+s.desc+'</div><div class="url">'+s.url+'</div></div>';
+  }).join('');
+  html += '<div class="add-card" onclick="openAdd()">＋<span>收藏网站</span></div>';
+  document.getElementById('srcGrid').innerHTML = html;
+  /* 默认收藏网站提示条 */
+  var tip = document.getElementById('srcDefaultTip');
+  var defCount = br.sources.filter(function(s){return s.type==='builtin'}).length;
+  tip.className = '';
+  tip.innerHTML = '🔖 已为您预置 <b>'+defCount+'</b> 个默认收藏网站（新注册用户自动获得）；可继续「＋ 收藏网站」添加自定义来源，或点 ✕ 删除自定义来源。';
+}
+function pickSrc(i){
+  br.src = i; br.page = 1; br.selected = {};
+  document.querySelectorAll('.src-card').forEach(function(c,j){ c.classList.toggle('active', j===i) });
+  document.getElementById('browseQ').value='';
+  switchBrView(br.view || 'search');
+}
+
+/* ============ 视图切换：站内检索 / 嵌入访问 ============ */
+function switchBrView(v){
+  br.view = v;
+  document.getElementById('brv-search').classList.toggle('active', v==='search');
+  document.getElementById('brv-embed').classList.toggle('active', v==='embed');
+  document.getElementById('searchView').classList.toggle('hidden', v!=='search');
+  document.getElementById('embedView').classList.toggle('hidden', v!=='embed');
+  if(v==='search'){ refreshBrList(); }
+  else { loadEmbed(); }
+}
+
+/* 嵌入访问：iframe 内嵌目标网站（不跳转）；被 X-Frame-Options 拒绝时提示降级 */
+function loadEmbed(){
+  var s = br.sources[br.src];
+  var url = document.getElementById('embedUrl').value.trim() || ('https://' + s.url);
+  if(!/^https?:\/\//.test(url)) url = 'https://' + url;
+  document.getElementById('embedUrl').value = url;
+  document.getElementById('embedOpen').href = url;
+  document.getElementById('embedFrame').src = url;
+  var tip = document.getElementById('embedTip');
+  tip.innerHTML = '正在内嵌访问 <b>'+s.name+'</b>（'+url+'）…<br>'+
+    '<span style="font-size:12px;color:var(--text-3)">若下方空白或报错：该网站设置了 <b>X-Frame-Options</b> 禁止被 iframe 嵌入（浏览器安全限制，前端无法绕过）。'+
+    '正式版由<b>后端代理渲染</b>（服务端抓取页面转内嵌视图）解决，或点「↗ 新窗口打开」。'+
+    '内嵌浏览同样可用「收藏网站 → 检索」直接导入论文。</span>';
+  setTimeout(function(){
+    tip.innerHTML = tip.innerHTML.replace('正在内嵌访问', '内嵌访问中');
+  }, 3000);
+}
+function openAdd(){
+  /* 简易添加表单（原型）：名称 + 域名，真实产品为完整弹窗表单 */
+  var name = prompt('网站名称（如 DBLP、IEEE Xplore）');
+  if(!name) return;
+  var url = prompt('网站域名（如 dblp.org，不带 https://）');
+  if(!url || !/^[\w-]+(\.[\w-]+)+/.test(url)){ toast('域名格式不正确'); return }
+  var dup = br.sources.some(function(s){ return s.url.toLowerCase()===url.toLowerCase() });
+  if(dup){ toast('该域名已存在'); return }
+  br.sources.push({name:name, icon:name[0], type:'custom', url:url, desc:'自定义收藏网站（待接入检索适配器）', mock:[]});
+  saveCustom();
+  toast('✅ 已收藏网站「'+name+'」；可「🌐 嵌入访问」直接浏览，检索适配器在正式版接入');
+  renderSrcGrid();
+}
+function delSource(i){
+  var s = br.sources[i];
+  if(s.type!=='custom') return;
+  if(!confirm('确定删除自定义网站「'+s.name+'」？')) return;
+  br.sources.splice(i,1); saveCustom();
+  if(br.src >= br.sources.length) br.src = 0;
+  br.page = 1;
+  toast('已删除「'+s.name+'」');
+  renderSrcGrid(); refreshBrList();
+}
+function doBrSearch(){
+  var q = document.getElementById('browseQ').value.trim().toLowerCase();
+  toast(q ? '🔍 在「'+br.sources[br.src].name+'」中检索「'+q+'」' : '显示全部结果');
+  br.page = 1;
+  var s = br.sources[br.src];
+  /* arXiv 来源：调用官方 API 真实检索（免费、无需 Key）；其余来源走本地演示数据 */
+  if(/arxiv/i.test((s.name||'')+' '+(s.url||''))){
+    searchArxiv(q);
+  } else {
+    refreshBrList(q);
+  }
+}
+/* 收藏网站：arXiv 官方 API 真实检索（http://export.arxiv.org/api/query，Atom XML） */
+function escHtml(t){
+  return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function searchArxiv(q){
+  var url = 'https://export.arxiv.org/api/query?search_query=all:' + encodeURIComponent(q) + '&max_results=20&sortBy=relevance';
+  document.getElementById('resultInfo').textContent = '⏳ 正在从 arXiv API 检索「'+q+'」…';
+  document.getElementById('resultList').innerHTML = '<div class="empty"><div class="big">⏳</div>正在请求 arXiv API…</div>';
+  document.getElementById('browsePager').innerHTML = '';
+  /* 降级链：直连 arXiv → 本地代理（arxiv_proxy.py，解决 CORS）→ 演示数据 */
+  fetch(url).then(function(r){ return r.text() }).then(function(xmlText){
+    renderArxivResults(q, xmlText, false);
+  }).catch(function(){
+    return fetch('http://127.0.0.1:8010/arxiv?q=' + encodeURIComponent(q)).then(function(r){ return r.text() }).then(function(xmlText){
+      renderArxivResults(q, xmlText, true);
+    }).catch(function(err){
+      document.getElementById('resultInfo').textContent = 'arXiv API 请求失败（浏览器跨域限制）';
+      document.getElementById('resultList').innerHTML =
+        '<div class="adaptor-empty"><div class="big">🌐</div><b>浏览器无法直连 arXiv API（CORS 限制）</b>'+
+        '<div style="font-size:13px;margin-top:6px;max-width:520px;margin-left:auto;margin-right:auto">本地演示可启动随附代理脚本解决：<code style="background:#f1f4f9;padding:2px 6px;border-radius:4px">python arxiv_proxy.py</code>（docs/prototype 目录），之后自动走真实检索。<b>正式版由后端代理</b>（Django 服务端转发）。当前展示内置演示数据。</div></div>';
+      refreshBrList(q);   /* fallback：演示数据 */
+    });
+  });
+}
+function renderArxivResults(q, xmlText, viaProxy){
+  var doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+  var entries = doc.getElementsByTagName('entry');
+  var list = [];
+  for(var i=0;i<entries.length;i++){
+    var e = entries[i];
+    var title = ((e.getElementsByTagName('title')[0]||{}).textContent||'').replace(/\s+/g,' ').trim();
+    if(!title) continue;
+    var authors = [];
+    var aus = e.getElementsByTagName('author');
+    for(var j=0;j<aus.length;j++){
+      authors.push(((aus[j].getElementsByTagName('name')[0]||{}).textContent||'').replace(/\s+/g,' ').trim());
+    }
+    var id = ((e.getElementsByTagName('id')[0]||{}).textContent||'').replace(/\s+/g,'').trim();
+    var m = id.match(/abs\/([^v]+)/);
+    var arxivId = m ? m[1] : ('item'+i);
+    var summary = ((e.getElementsByTagName('summary')[0]||{}).textContent||'').replace(/\s+/g,' ').trim();
+    var published = (e.getElementsByTagName('published')[0]||{}).textContent || '';
+    var pdf = '';
+    var links = e.getElementsByTagName('link');
+    for(var k=0;k<links.length;k++){
+      if(links[k].getAttribute('title')==='pdf') pdf = links[k].getAttribute('href')||'';
+    }
+    list.push({id:'arxiv_'+arxivId, title:title, authors: authors.join(', '),
+      venue:'arXiv:'+arxivId, date: published.slice(0,10), note:'arXiv 实时检索',
+      url: pdf || ('https://arxiv.org/abs/'+arxivId), abs: summary.slice(0,400), arxivId: arxivId});
+  }
+  if(!list.length){
+    document.getElementById('resultInfo').textContent = 'arXiv 无匹配结果';
+    document.getElementById('resultList').innerHTML = '<div class="empty"><div class="big">🔍</div>arXiv 未检索到「'+q+'」，换个关键词试试</div>';
+    updSelUI();
+    return;
+  }
+  var s = br.sources[br.src];
+  s.mock = list;              /* 缓存，切换回来直接显示 */
+  br.filtered = list;
+  br.page = 1;
+  var total = list.length, pages = Math.max(1, Math.ceil(total/br.size));
+  document.getElementById('resultInfo').textContent = '「'+q+'」共 '+total+' 条 · 来源 arXiv'+(viaProxy?'（本地代理）':'（实时 API）');
+  var slice = list.slice(0, br.size);
+  document.getElementById('resultList').innerHTML = slice.map(function(p){
+    var done = br.imported[p.id];
+    return '<div class="br-item" data-id="'+p.id+'" style="cursor:pointer">'+
+      '<input type="checkbox" class="ck" data-id="'+p.id+'"'+(br.selected[p.id]?' checked':'')+' onchange="event.stopPropagation();onSel(this)">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="ttl">'+escHtml(p.title)+'</div>'+
+        '<div class="au">'+escHtml(p.authors)+'</div>'+
+        '<div class="meta2"><span>'+escHtml(p.venue)+'</span><span>📅 '+p.date+'</span><span style="color:var(--primary)">'+(viaProxy?'本地代理检索':'arXiv 实时检索')+'</span>'+(done?'<span class="imported-tag">✓ 已导入</span>':'')+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:6px">'+
+        '<a class="btn btn-sm" href="'+(p.url||('https://arxiv.org/abs/'+p.arxivId))+'" target="_blank" onclick="event.stopPropagation()">原文 ↗</a>'+
+        '<button class="btn btn-sm '+(done?'':'btn-primary')+'" onclick="event.stopPropagation();importOne(\''+p.id+'\')">'+(done?'已导入':'导入')+'</button>'+
+      '</div></div>';
+  }).join('');
+  renderPager({el: document.getElementById('browsePager'), page: br.page, pageSize: br.size, total: total,
+    onChange: function(pg){ br.page=pg; refreshBrList(); }});
+  updSelUI();
+  saveCustom();   /* 结果缓存到用户来源数据 */
+}
+function refreshBrList(q){
+  var s = br.sources[br.src];
+  var query = (q!==undefined ? q : document.getElementById('browseQ').value.trim().toLowerCase());
+  var list = (s.mock||[]).filter(function(p){
+    if(!query) return true;
+    return (p.title+' '+p.authors+' '+(p.note||'')).toLowerCase().indexOf(query)>=0;
+  });
+  br.filtered = list;
+
+  if(s.type==='custom' && !list.length){
+    document.getElementById('resultInfo').textContent = s.name+' · 适配器待接入';
+    document.getElementById('resultList').innerHTML =
+      '<div class="adaptor-empty"><div class="big">🔌</div><b>「'+s.name+'」的检索适配器尚未接入</b>'+
+      '<div style="font-size:13px;margin-top:6px;max-width:520px;margin-left:auto;margin-right:auto">正式版中，为该网站配置适配器（解析其检索结果页或开放 API）后即可像 arXiv 一样站内检索、勾选导入。<br>当前可先访问该网站查找论文，再用「DOI/arXiv 导入」或「上传 PDF」入库。</div>'+
+      '<div style="margin-top:14px"><a class="btn btn-primary" href="https://'+s.url+'" target="_blank">↗ 访问 '+s.name+'</a></div></div>';
+    document.getElementById('browsePager').innerHTML = '';
+    updSelUI();
+    return;
+  }
+
+  var total = list.length, pages = Math.max(1, Math.ceil(total/br.size));
+  if(br.page > pages) br.page = pages;
+  document.getElementById('resultInfo').textContent = query ? '「'+query+'」共 '+total+' 条 · 来源 '+s.name : s.name+' · '+total+' 条结果';
+
+  var slice = list.slice((br.page-1)*br.size, br.page*br.size);
+  document.getElementById('resultList').innerHTML = slice.length ? slice.map(function(p){
+    var done = br.imported[p.id];
+    var act = (br.detailId===p.id ? ';border-color:var(--primary);background:var(--primary-light)' : '');
+    return '<div class="br-item" data-id="'+p.id+'" style="cursor:pointer'+act+'">'+
+      '<input type="checkbox" class="ck" data-id="'+p.id+'"'+(br.selected[p.id]?' checked':'')+' onchange="event.stopPropagation();onSel(this)">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="ttl">'+p.title+'</div>'+
+        '<div class="au">'+p.authors+'</div>'+
+        '<div class="meta2"><span>'+p.venue+'</span><span>📅 '+p.date+'</span>'+(p.note?'<span style="color:var(--primary)">'+p.note+'</span>':'')+
+        (done?'<span class="imported-tag">✓ 已导入</span>':'')+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:6px">'+
+        '<a class="btn btn-sm" href="'+paperLink(s,p)+'" target="_blank" onclick="event.stopPropagation()">原文 ↗</a>'+
+        '<button class="btn btn-sm '+(done?'':'btn-primary')+'" onclick="event.stopPropagation();importOne(\''+p.id+'\')">'+(done?'已导入':'导入')+'</button>'+
+      '</div></div>';
+  }).join('') : '<div class="empty"><div class="big">🔍</div>无匹配结果，换个关键词试试</div>';
+
+  updSelUI();
+  renderPager({
+    el: document.getElementById('browsePager'),
+    page: br.page, pageSize: br.size, total: total,
+    onChange: function(p){ br.page=p; refreshBrList(query); document.getElementById('viewBrowse').scrollIntoView({behavior:'smooth'}); },
+    onSizeChange: function(sz){ br.size=sz; br.page=1; refreshBrList(query); }
+  });
+}
+function paperLink(s, p){
+  if(p.url) return p.url;
+  if(s.name==='arXiv') return 'https://arxiv.org/abs/'+p.id;
+  var kw = p.title.split(':')[0].split('?')[0].trim();
+  return 'https://'+s.url+'/search/?q='+encodeURIComponent(kw);
+}
+function onSel(cb){ if(cb.checked) br.selected[cb.dataset.id]=1; else delete br.selected[cb.dataset.id]; updSelUI() }
+function toggleSelAll(cb){
+  var s = br.sources[br.src];
+  var slice = br.filtered.slice((br.page-1)*br.size, br.page*br.size);
+  slice.forEach(function(p){ if(cb.checked) br.selected[p.id]=1; else delete br.selected[p.id]; });
+  document.querySelectorAll('.br-item .ck').forEach(function(c){ c.checked = !!br.selected[c.dataset.id] });
+  updSelUI();
+}
+function updSelUI(){
+  document.getElementById('selCount').textContent = Object.keys(br.selected).length;
+  document.getElementById('selTotal').textContent = Object.keys(br.selected).length;
+}
+
+/* ================= 导入详情表单（分类 / 标签 / 简介） ================= */
+var idmPapers = [];          // 待导入论文 [{id,title,venue,date}]
+var idmSelTags = {};         // 选中的标签
+var ALL_TAGS = ['OCR','Transformer','CV','NLP','目标检测','图像分类','多模态','大模型','实用系统','手写识别'];
+
+function openImportDetail(papers){
+  if(!papers || !papers.length){ toast('请先选择要导入的论文'); return }
+  idmPapers = papers;
+  idmSelTags = {};
+  document.getElementById('idmCount').textContent = '（'+papers.length+' 篇）';
+  document.getElementById('idmList').innerHTML = papers.map(function(p){
+    return '<div class="idm-paper"><span>📄</span><span class="t">'+p.title+'</span>'+
+      '<span style="color:var(--text-3);font-size:12px;white-space:nowrap">'+(p.venue||p.date||'')+'</span></div>';
+  }).join('');
+  document.getElementById('idmCat').innerHTML = PM.categories.map(function(c){ return '<option>'+c+'</option>' }).join('');
+  document.getElementById('idmStatus').innerHTML = PM.statuses.map(function(s){ return '<option'+(s==='在读'?' selected':'')+'>'+s+'</option>' }).join('');
+  document.getElementById('idmIntro').value = '';
+  renderIdmTags();
+  openModal('importDetailModal');
+}
+function renderIdmTags(){
+  document.getElementById('idmTags').innerHTML = ALL_TAGS.map(function(t){
+    return '<span class="chip'+(idmSelTags[t]?' on':'')+'" onclick="toggleIdmTag(this,\''+t+'\')">'+t+'</span>';
+  }).join('');
+}
+function toggleIdmTag(el, t){
+  if(idmSelTags[t]) delete idmSelTags[t]; else idmSelTags[t]=1;
+  el.classList.toggle('on');
+}
+function addCustomTag(){
+  var v = document.getElementById('idmNewTag').value.trim();
+  if(!v) return;
+  if(!idmSelTags[v]) idmSelTags[v]=1;
+  if(ALL_TAGS.indexOf(v)<0) ALL_TAGS.push(v);
+  document.getElementById('idmNewTag').value='';
+  renderIdmTags();
+  toast('已添加标签「'+v+'」');
+}
+function aiIntro(){
+  var btn = event.target;
+  btn.disabled = true; btn.textContent = '⏳ 生成中…';
+  var p = idmPapers[0];
+  var cat = document.getElementById('idmCat').value;
+  var tags = Object.keys(idmSelTags).join('/') || '该方向';
+  setTimeout(function(){
+    var intro = '《'+p.title.slice(0,30)+'…》属于「'+cat+'」方向，围绕「'+tags+'」提出方法并给出实验验证，'+
+      '建议先看 AI 总结与术语表，再决定是否精读。';
+    document.getElementById('idmIntro').value = intro;
+    btn.disabled = false; btn.textContent = '🤖 AI 生成';
+    toast('✅ 简介已生成（演示，真实产品接入大模型）');
+  }, 1000);
+}
+function closeImportDetail(){ closeModal('importDetailModal') }
+function confirmImport(){
+  var cat = document.getElementById('idmCat').value;
+  var status = document.getElementById('idmStatus').value;
+  var tags = Object.keys(idmSelTags);
+  var intro = document.getElementById('idmIntro').value.trim();
+  if(!intro){ toast('简介不能为空，请填写或点「AI 生成」'); return }
+  idmPapers.forEach(function(p){ br.imported[p.id]=1; delete br.selected[p.id] });
+  toast('✅ 已导入 '+idmPapers.length+' 篇 → 类别「'+cat+'」· 状态「'+status+'」· 标签：'+(tags.join('、')||'无')+' · 简介已保存');
+  closeImportDetail();
+  setTimeout(function(){
+    toast('已同步到「我的文献」→ '+cat+' 类别');
+  }, 2200);
+  refreshBrList();
+}
+function importChecked(){
+  var ids = Object.keys(br.selected);
+  if(!ids.length){ toast('请先勾选要导入的论文'); return }
+  var papers = br.filtered.filter(function(p){ return br.selected[p.id] })
+    .map(function(p){ return {id:p.id, title:p.title, venue:p.venue, date:p.date} });
+  openImportDetail(papers);
+}
+/* 单条导入：按 id 从当前来源查找 */
+function importOne(id){
+  var s = br.sources[br.src];
+  var p = (s.mock||[]).find(function(x){return x.id===id});
+  if(p) openImportDetail([{id:p.id,title:p.title,venue:p.venue,date:p.date}]);
+}
+
+/* ============ 导入文献 Tab：本地文件上传（单个/批量），资料字段与收藏网站导入一致 ============ */
+var impFiles = [];   // {name,size,title,cat,status,tags:{},intro}
+
+function onImpFiles(){
+  var input = document.getElementById('impFile');
+  var fs = input.files || [];
+  if(!fs.length){ return }
+  for(var i=0;i<fs.length;i++){
+    impFiles.push({name: fs[i].name, size: fs[i].size,
+      title: fs[i].name.replace(/\.[^.]+$/,''),
+      cat: PM.categories[0], status: '想读', tags: {}, intro: ''});
+  }
+  input.value = '';
+  renderImpPick();
+  renderImpForms();
+}
+function impFmtSize(b){
+  return b > 1048576 ? (b/1048576).toFixed(1)+' MB' : Math.max(1, Math.round(b/1024))+' KB';
+}
+function renderImpPick(){
+  var el = document.getElementById('impPickList');
+  el.innerHTML = impFiles.map(function(f,i){
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;background:#fff">'+
+      '<span>📄</span><span style="flex:1;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+f.name+'</span>'+
+      '<span style="color:var(--text-3);font-size:12px;white-space:nowrap">'+impFmtSize(f.size)+'</span>'+
+      '<button class="btn btn-sm" style="color:var(--danger)" onclick="impRemove('+i+')">✕</button></div>';
+  }).join('');
+  document.getElementById('impFooter').style.display = impFiles.length ? 'flex' : 'none';
+  document.getElementById('impCount').textContent = '共 '+impFiles.length+' 个文件待导入';
+}
+function renderImpForms(){
+  document.getElementById('impForms').innerHTML = impFiles.map(function(f,i){
+    return '<div class="card" style="padding:16px 18px;margin-bottom:12px">'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">'+
+        '<span style="font-size:20px">📄</span>'+
+        '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+f.name+'</div>'+
+        '<div style="color:var(--text-3);font-size:12px">'+impFmtSize(f.size)+' · 标题默认取文件名，可修改</div></div>'+
+        '<button class="btn btn-sm" style="color:var(--danger)" onclick="impRemove('+i+')">移除</button>'+
+      '</div>'+
+      '<div class="field" style="margin-bottom:10px"><label>标题（默认取文件名）</label>'+
+        '<input value="'+f.title.replace(/"/g,'&quot;')+'" oninput="impFiles['+i+'].title=this.value" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;outline:none"></div>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px">'+
+        '<div class="field"><label>所属类别（文件夹）</label><select onchange="impFiles['+i+'].cat=this.value" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:#fff">'+
+          PM.categories.map(function(c){return '<option'+(c===f.cat?' selected':'')+'>'+c+'</option>'}).join('')+'</select></div>'+
+        '<div class="field"><label>阅读状态</label><select onchange="impFiles['+i+'].status=this.value" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:#fff">'+
+          PM.statuses.map(function(s){return '<option'+(s===f.status?' selected':'')+'>'+s+'</option>'}).join('')+'</select></div>'+
+      '</div>'+
+      '<div class="field" style="margin-bottom:10px"><label>标签（点击多选，可自定义）</label>'+
+        '<div class="tag-pick" id="impTags-'+i+'">'+ALL_TAGS.map(function(t){
+          return '<span class="chip'+(f.tags[t]?' on':'')+'" onclick="impToggleTag('+i+',this,\''+t+'\')">'+t+'</span>';
+        }).join('')+'</div>'+
+        '<div style="display:flex;gap:6px;margin-top:8px">'+
+          '<input id="impNewTag-'+i+'" placeholder="自定义标签，回车添加…" style="flex:1;padding:7px 12px;border:1px solid var(--border);border-radius:8px;outline:none" onkeydown="if(event.key===\'Enter\'){impAddTag('+i+');event.preventDefault()}">'+
+          '<button class="btn btn-sm" onclick="impAddTag('+i+')">添加</button></div>'+
+      '</div>'+
+      '<div class="field"><label>简介（用于快速了解论文内容）</label>'+
+        '<div style="display:flex;gap:8px;margin-bottom:6px">'+
+          '<textarea rows="2" placeholder="一句话说明这篇论文讲什么…" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;outline:none;resize:vertical" oninput="impFiles['+i+'].intro=this.value">'+f.intro+'</textarea>'+
+          '<button class="btn btn-sm" style="align-self:flex-end;white-space:nowrap" onclick="impAiIntro('+i+')">🤖 AI 生成</button></div>'+
+      '</div>'+
+      '<div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px">'+
+        '<button class="btn" onclick="impClearOne('+i+')">清空此篇</button>'+
+        '<button class="btn btn-primary" onclick="impImportOne('+i+')">📥 导入此篇</button>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+function impRemove(i){ impFiles.splice(i,1); renderImpPick(); renderImpForms(); }
+function impClearOne(i){ impFiles[i].intro=''; impFiles[i].tags={}; renderImpForms(); }
+function impClearAll(){ impFiles=[]; renderImpPick(); renderImpForms(); }
+function impToggleTag(i, el, t){
+  if(impFiles[i].tags[t]) delete impFiles[i].tags[t]; else impFiles[i].tags[t]=1;
+  el.classList.toggle('on');
+}
+function impAddTag(i){
+  var v = document.getElementById('impNewTag-'+i).value.trim();
+  if(!v) return;
+  if(!impFiles[i].tags[v]) impFiles[i].tags[v]=1;
+  if(ALL_TAGS.indexOf(v)<0) ALL_TAGS.push(v);
+  document.getElementById('impNewTag-'+i).value='';
+  renderImpForms();
+  toast('已添加标签「'+v+'」');
+}
+function impAiIntro(i){
+  var f = impFiles[i];
+  var tags = Object.keys(f.tags).join('/') || '该方向';
+  f.intro = '《'+f.title.slice(0,24)+'…》属于「'+f.cat+'」方向，围绕「'+tags+'」提出方法并给出实验验证，建议先看 AI 总结与术语表，再决定是否精读。';
+  renderImpForms();
+  toast('✅ 简介已生成（演示，真实产品接入大模型）');
+}
+function doImp(f){
+  /* 原型：记录导入（真实产品为文件解析+入库） */
+  try{
+    var recs = JSON.parse(localStorage.getItem('pm_imports')||'[]');
+    recs.push({title:f.title, cat:f.cat, status:f.status, tags:Object.keys(f.tags), intro:f.intro, name:f.name, ts:Date.now()});
+    localStorage.setItem('pm_imports', JSON.stringify(recs));
+  }catch(e){}
+  toast('✅ 已导入「'+f.title+'」→ 类别「'+f.cat+'」· 状态「'+f.status+'」· 标签：'+(Object.keys(f.tags).join('、')||'无'));
+}
+function impImportOne(i){
+  doImp(impFiles[i]);
+  impFiles.splice(i,1);
+  renderImpPick(); renderImpForms();
+}
+function impImportAll(){
+  if(!impFiles.length){ toast('请先选择要导入的文件'); return }
+  impFiles.forEach(doImp);
+  toast('✅ 已批量导入 '+impFiles.length+' 篇 → 已同步到「我的文献」');
+  impFiles=[]; renderImpPick(); renderImpForms();
+}
+
+/* ============ 收藏网站：右侧论文详情面板 ============ */
+function showBrDetailById(id){
+  var s = br.sources[br.src];
+  var p = (br.filtered||[]).find(function(x){return x.id===id});
+  if(!p) return;
+  br.detailId = id;
+  var done = br.imported[id];
+  var act = '';
+  if(s.type==='custom') act = '嵌入访问可浏览该站；检索适配器在正式版接入后即可站内检索。';
+  var brEmpty = document.getElementById('brDetailEmpty');
+  if(brEmpty) brEmpty.style.display = 'none';   // 首次渲染后空状态节点被 innerHTML 替换删除，需判空
+  document.getElementById('brDetail').innerHTML =
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+
+      '<span class="badge badge-green">来源 '+s.name+'</span>'+
+      (done?'<span class="badge badge-blue">✓ 已在文献库</span>':'<span class="badge badge-orange">未导入</span>')+
+    '</div>'+
+    '<div style="font-size:14px;font-weight:700;line-height:1.45">'+p.title+'</div>'+
+    '<div style="color:var(--text-2);font-size:12.5px;margin-top:8px">'+p.authors+'</div>'+
+    '<div style="color:var(--text-3);font-size:12px;margin-top:2px">'+p.venue+' · 📅 '+p.date+'</div>'+
+    (p.note?'<div class="intro-tag" style="margin:10px 0">'+p.note+'</div>':'')+
+    (act?'<div style="font-size:12px;color:var(--text-3);background:#f8fafc;border-radius:8px;padding:8px 10px;margin-top:8px">'+act+'</div>':'')+
+    '<div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">'+
+      '<button class="btn btn-primary btn-sm" onclick="importOne(\''+p.id+'\')">'+(done?'✓ 已导入':'＋ 导入本篇')+'</button>'+
+      '<a class="btn btn-sm" href="'+paperLink(s,p)+'" target="_blank">↗ 原文</a>'+
+      '<button class="btn btn-sm" onclick="switchBrView(\'embed\')">🌐 嵌入访问</button>'+
+    '</div>'+
+    '<div style="margin-top:12px;padding-top:10px;border-top:1px dashed var(--border);font-size:12px;color:var(--text-3)">'+
+      '点击列表其他论文可切换详情；勾选后点「导入所选」可批量入库。</div>';
+  refreshBrList();
+}
+
+/* ================= 初始化 ================= */
+loadSources();
+renderSrcGrid();
+refreshBrList();
+
+/* 我的文献列表：事件委托（不依赖内联 onclick——innerHTML 重建后仍稳定，兼容各浏览器内核） */
+document.getElementById('libList').addEventListener('click', function(e){
+  if(e.target.closest('button')) return;        // 按钮/链接走自己的逻辑
+  var card = e.target.closest ? e.target.closest('.paper-card') : null;
+  if(card && card.dataset && card.dataset.id != null) showLibDetail(Number(card.dataset.id));
+});
+/* 收藏网站结果列表：事件委托 */
+document.getElementById('resultList').addEventListener('click', function(e){
+  if(e.target.closest('button')) return;
+  if(e.target.closest('.ck')) return;           // 勾选框
+  var item = e.target.closest ? e.target.closest('.br-item') : null;
+  if(item && item.dataset && item.dataset.id != null) showBrDetailById(item.dataset.id);
+});
+
+/* 阅读器 Tab：论文选择下拉 */
+(function(){
+  var sel = document.getElementById('readerPick');
+  sel.innerHTML = '<option value="" data-i18n="rd_pick">选择论文…</option>' + PM.papers.map(function(p,i){
+    return '<option value="'+i+'">'+p.title.slice(0,36)+(p.title.length>36?'…':'')+'</option>';
+  }).join('');
+})();
+
+/* 全局"点击论文/继续阅读"入口统一到文献库：
+   ?p=ID → 我的文献右侧详情；?p=ID&tab=reader → 阅读器 Tab 并加载该论文（不跳独立页面） */
+(function(){
+  var p = new URLSearchParams(location.search);
+  var pid = p.get('p');
+  var tab = p.get('tab');
+  if(pid != null && PM.papers[pid]){
+    if(tab === 'reader'){
+      switchLibTab('reader');
+      setTimeout(function(){ loadReader(Number(pid)) }, 100);
+    } else {
+      switchLibTab('lib');
+      setTimeout(function(){ showLibDetail(Number(pid)) }, 150);
+    }
+  } else if(tab === 'reader'){
+    switchLibTab('reader');
+  } else if(tab === 'import'){
+    switchLibTab('import');
+  }
+})();
+</script>
+</body>
+</html>

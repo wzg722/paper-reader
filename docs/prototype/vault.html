@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaperMind</title>
+<link rel="icon" type="image/png" href="favicon-32.png">
+<link rel="stylesheet" href="style.css?v=2301">
+<style>
+.kb-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px;box-shadow:var(--shadow);transition:.15s;cursor:pointer;display:flex;flex-direction:column;gap:8px}
+.kb-card:hover{border-color:var(--border-2);box-shadow:var(--shadow-lg);transform:translateY(-1px)}
+.kb-card .t{font-weight:700;font-size:14.5px;line-height:1.45}
+.kb-card .core{font-size:13px;color:var(--text-2);background:#f8fafc;border-radius:8px;padding:8px 10px;border-left:3px solid var(--primary)}
+.kb-card .ft{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-3);margin-top:auto;flex-wrap:wrap}
+.stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:6px}
+.stat-mini{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center}
+.stat-mini .n{font-size:22px;font-weight:800}
+.stat-mini .l{font-size:12px;color:var(--text-3);margin-top:2px}
+.term-row{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid #f1f4f9;font-size:13.5px}
+.term-row:last-child{border-bottom:none}
+.term-row .en{font-weight:600;width:200px;flex-shrink:0}
+.term-row .zh{color:var(--primary);width:140px;flex-shrink:0}
+.term-row .from{color:var(--text-3);font-size:12px}
+.exp-block{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-top:16px}
+.exp-block textarea{width:100%;height:150px;border:1px solid var(--border);border-radius:8px;padding:10px;font-size:12.5px;font-family:Consolas,monospace;resize:vertical;outline:none;background:#f8fafc}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="logo" href="index.html"><span class="mark">研</span>PaperMind</a>
+  <nav class="nav">
+    <a href="index.html" data-i18n="nav_discover">发现</a>
+    <a href="library.html" data-i18n="nav_library">文献库</a>
+    <a href="graph.html" data-i18n="nav_graph">图谱</a>
+    <a href="vault.html" class="active" data-i18n="nav_vault">知识库</a>
+    <a href="community.html" data-i18n="nav_community">社区交流</a>
+    
+  </nav>
+  <div class="right">
+    
+    <div class="user-menu">
+      <div class="avatar" id="avatarBtn">王</div>
+      <div class="um-drop hidden" id="userDrop">
+        <div class="um-head"><b id="umName">—</b><span id="umEmail"></span></div>
+        <a href="profile.html">👤 个人中心</a>
+        <a href="profile.html#edit">📝 修改资料</a>
+        
+        <div class="um-sep"></div>
+        <a href="javascript:logout()">🚪 退出登录</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container" style="width:100%;max-width:none;height:calc(100vh - var(--topbar-h));overflow-y:auto;padding:0 24px 24px;box-sizing:border-box">
+
+  <div class="section-title" style="margin-top:8px" data-i18n="t_vault">📚 个人论文知识库
+    <span class="more" style="color:var(--text-3);font-size:13px">已读论文的知识沉淀：AI 卡片 · 术语 · 笔记 · 一键导出 Obsidian</span>
+  </div>
+
+  <!-- 知识资产统计（点击跳转到对应模块） -->
+  <div class="stat-grid">
+    <div class="stat-mini" style="cursor:pointer" title="查看已读论文 AI 知识卡片" onclick="scrollToSec('sec-cards')"><div class="n" style="color:var(--primary)" id="sCards">0</div><div class="l">知识卡片（已读）</div></div>
+    <div class="stat-mini" style="cursor:pointer" title="查看跨论文术语库" onclick="scrollToSec('sec-terms')"><div class="n" style="color:var(--purple)" id="sTerms">0</div><div class="l">术语积累</div></div>
+    <div class="stat-mini" style="cursor:pointer" title="查看我的笔记聚合" onclick="scrollToSec('sec-notes')"><div class="n" style="color:var(--accent)" id="sNotes">0</div><div class="l">笔记</div></div>
+    <div class="stat-mini" style="cursor:pointer" title="查看高亮与笔记" onclick="scrollToSec('sec-notes')"><div class="n" style="color:var(--warn)" id="sHl">0</div><div class="l">高亮</div></div>
+    <div class="stat-mini" style="cursor:pointer" title="前往文献库查看阅读进度" onclick="location.href='library.html?tab=lib'"><div class="n" style="color:var(--danger)" id="sAvg">0%</div><div class="l">平均精读进度</div></div>
+  </div>
+
+  <!-- 知识卡片 -->
+  <div class="section-title" id="sec-cards" data-i18n="vault_cards">📚 已读论文 · AI 知识卡片</div>
+  <div id="cardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px"></div>
+  <div id="kbPager" style="margin-top:12px"></div>
+
+  <!-- 术语库 -->
+  <div class="section-title" id="sec-terms" data-i18n="vault_terms">📖 术语库（跨论文沉淀）</div>
+  <div class="card" style="padding:8px 18px">
+    <div style="display:flex;align-items:center;color:var(--text-3);font-size:12px;padding:6px 4px;border-bottom:1px solid var(--border)">
+      <span style="width:200px">英文术语</span><span style="width:140px">中文译名</span><span>来源论文 / 说明</span>
+    </div>
+    <div id="termList"></div>
+    <div id="termPager" style="margin-top:10px"></div>
+  </div>
+
+  <!-- 笔记聚合 -->
+  <div class="section-title" id="sec-notes" data-i18n="vault_notes">💬 我的笔记（按论文聚合）</div>
+  <div id="noteAgg"></div>
+  <div id="notePager" style="margin-top:10px"></div>
+
+  <!-- 导出 Obsidian -->
+  <div class="section-title">📤 导出到 Obsidian 知识库</div>
+  <div class="exp-block">
+    <div style="font-size:13.5px;color:var(--text-2);margin-bottom:8px">
+      <b>把已读论文逐篇导入 Obsidian</b>：每篇论文生成一个独立 Markdown 文件（YAML frontmatter + AI 精读总结 + 摘要 + 术语 + 笔记 + 双链），
+      下载后放入 vault（<code>02-Areas/论文精读/</code>）即完成导入，可在 Obsidian 中检索、双链、图谱关联。
+    </div>
+    <!-- 待导入论文清单（默认全选已读论文） -->
+    <div style="margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <b style="font-size:13px">待导入论文（<span id="expSelCount">0</span> 篇）</b>
+        <div style="flex:1"></div>
+        <button class="btn btn-sm" onclick="expToggleAll(true)">全选</button>
+        <button class="btn btn-sm" onclick="expToggleAll(false)">全不选</button>
+      </div>
+      <div id="expPaperList" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:4px"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="btn btn-primary" onclick="exportSelected()">⬇ 导出所选论文（每篇一个 .md）</button>
+      <button class="btn" onclick="exportMd(true)">📋 复制合集 Markdown</button>
+      <span style="font-size:12px;color:var(--text-3);align-self:center">真实产品：与 Obsidian vault 目录打通，一键同步</span>
+    </div>
+    <textarea id="mdPreview" readonly placeholder="点击上方按钮生成 Markdown 预览…"></textarea>
+  </div>
+
+  <!-- 知识库使用小贴士 -->
+  <div class="card" style="padding:14px 18px;margin-top:16px;background:linear-gradient(135deg,#f5f3ff,#eff6ff);border-color:#e0e7ff">
+    <div style="font-weight:700;font-size:13.5px;margin-bottom:8px">💡 知识库使用小贴士</div>
+    <div style="font-size:12.5px;color:var(--text-2);line-height:2">
+      ① 读完论文后回到本页，AI 知识卡片自动沉淀（摘要/核心/方法/结果/局限）；<br>
+      ② 术语库跨论文去重积累，精读时划词翻译自动命中；<br>
+      ③ 笔记聚合按论文分组，点「📖 阅读」可回到阅读器继续精读；<br>
+      ④ 每周导出一次 Obsidian，frontmatter + 双链让知识库可检索、可图谱关联。
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="data.js?v=2301"></script>
+<script src="user-menu.js?v=2301"></script>
+<script src="pager.js?v=2301"></script>
+<script>
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2400)}
+
+/* ============ 统计 ============ */
+(function(){
+  var read = PM.papers.filter(function(p){return p.read>0 && !p._trashed});
+  var terms = collectTerms();
+  var s = PM.stats;
+  document.getElementById('sCards').textContent = read.length;
+  document.getElementById('sTerms').textContent = terms.length;
+  document.getElementById('sNotes').textContent = s.notes;
+  document.getElementById('sHl').textContent = s.hl;
+  document.getElementById('sAvg').textContent = Math.round(read.reduce(function(a,p){return a+p.read},0)/Math.max(1,read.length))+'%';
+})();
+
+/* 术语跨论文汇总（记录来源论文 id，支持点击跳详情） */
+function collectTerms(){
+  var map = {};
+  PM.papers.forEach(function(p){ if(p._trashed) return;
+    (p.glossary||[]).forEach(function(g){
+      if(!map[g[0]]) map[g[0]] = {en:g[0], zh:g[1], note:g[2], from:[], fromIds:[]};
+      if(map[g[0]].fromIds.indexOf(p.id)<0){
+        map[g[0]].from.push(p.title.split(':')[0].slice(0,24));
+        map[g[0]].fromIds.push(p.id);
+      }
+    });
+  });
+  return Object.keys(map).map(function(k){return map[k]});
+}
+
+/* ============ 知识卡片（已读论文 · 分页 6/页） ============ */
+var kbPage = 1, kbSize = 6;
+function renderCards(){
+  var list = PM.papers.filter(function(p){return p.read>0 && !p._trashed});
+  var total = list.length, pages = Math.max(1, Math.ceil(total/kbSize));
+  if(kbPage > pages) kbPage = pages;
+  var slice = list.slice((kbPage-1)*kbSize, kbPage*kbSize);
+  document.getElementById('cardGrid').innerHTML = slice.map(function(p){
+    var noteCount = PM.notes.filter(function(n){return n.paper===p.id}).length;
+    return '<div class="kb-card" onclick="location.href=\'library.html?p='+p.id+'\'">'+
+      '<div class="t">'+p.title+'</div>'+
+      '<div class="intro-tag">'+PM.getIntro(p)+'</div>'+
+      '<div class="core">💡 '+p.summary.core+'</div>'+
+      '<div class="ft">'+
+        '<span class="badge '+(p.status==='读完'?'badge-green':p.status==='想读'?'badge-orange':'badge-blue')+'">'+p.status+'</span>'+
+        '<span class="badge badge-purple">'+p.cat+'</span>'+
+        '<span>已读 '+p.read+'%</span>'+
+        '<span>📝 '+noteCount+'</span>'+
+        '<span style="margin-left:auto">'+p.year+'</span>'+
+      '</div></div>';
+  }).join('') || '<div class="empty"><div class="big">📭</div>还没有精读完成的论文，去文献库开始吧</div>';
+  renderPager({el: document.getElementById('kbPager'), page: kbPage, pageSize: kbSize, total: total,
+    onChange: function(p){ kbPage=p; renderCards(); },
+    onSizeChange: function(s){ kbSize=s; kbPage=1; renderCards(); }});
+}
+renderCards();
+
+/* ============ 术语库（分页 10/页，点击跳相关论文详情） ============ */
+var termPage = 1, termSize = 10;
+function renderTerms(){
+  var terms = collectTerms();
+  var total = terms.length, pages = Math.max(1, Math.ceil(total/termSize));
+  if(termPage > pages) termPage = pages;
+  var slice = terms.slice((termPage-1)*termSize, termPage*termSize);
+  document.getElementById('termList').innerHTML = slice.map(function(t){
+    var pid = t.fromIds[0];
+    return '<div class="term-row" style="cursor:pointer" title="点击查看相关论文详情" onclick="location.href=\'library.html?p='+pid+'\'">'+
+      '<span class="en">'+t.en+'</span><span class="zh">'+t.zh+'</span>'+
+      '<span class="from">'+t.note+' · 出自：'+t.from.join('、')+'</span></div>';
+  }).join('') || '<div class="empty">暂无术语</div>';
+  renderPager({el: document.getElementById('termPager'), page: termPage, pageSize: termSize, total: total,
+    onChange: function(p){ termPage=p; renderTerms(); },
+    onSizeChange: function(s){ termSize=s; termPage=1; renderTerms(); }
+  });
+}
+renderTerms();
+
+/* ============ 笔记聚合（分页 5 组/页，点击跳论文详情） ============ */
+var notePage = 1, noteSize = 5;
+function renderNotes(){
+  var groups = PM.papers.filter(function(p){return !p._trashed}).map(function(p){
+    return {p:p, ns:PM.notes.filter(function(n){return n.paper===p.id})};
+  }).filter(function(g){return g.ns.length});
+  var total = groups.length, pages = Math.max(1, Math.ceil(total/noteSize));
+  if(notePage > pages) notePage = pages;
+  var slice = groups.slice((notePage-1)*noteSize, notePage*noteSize);
+  document.getElementById('noteAgg').innerHTML = slice.map(function(g){
+    var p = g.p;
+    return '<div class="card" style="padding:14px 18px;margin-bottom:12px;cursor:pointer" title="点击查看论文详情" onclick="location.href=\'library.html?p='+p.id+'\'">'+
+      '<div style="display:flex;align-items:center;margin-bottom:8px">'+
+        '<div style="font-weight:700;font-size:14px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 '+p.title+'</div>'+
+        '<span style="font-weight:400;color:var(--text-3);font-size:12px;margin-right:10px;white-space:nowrap">'+g.ns.length+' '+PM.t('vault_note_count')+'</span>'+
+        '<button class="btn btn-sm btn-primary" onclick="event.stopPropagation();location.href=\'library.html?tab=reader&p='+p.id+'&mark=first\'">📖 阅读</button>'+
+      '</div>'+
+      g.ns.map(function(n){
+        return '<div style="font-size:13.5px;padding:5px 0;border-bottom:1px dashed #f1f4f9">'+
+          '<span class="color-chip" style="display:inline-block;width:10px;height:10px;border-radius:3px;background:'+{y:'#fde68a',g:'#a7f3d0',b:'#bfdbfe',p:'#fbcfe8',o:'#fed7aa'}[n.color]+';margin-right:6px"></span>'+
+          n.text+'</div>';
+      }).join('')+'</div>';
+  }).join('') || '<div class="empty">暂无笔记</div>';
+  renderPager({el: document.getElementById('notePager'), page: notePage, pageSize: noteSize, total: total,
+    onChange: function(p){ notePage=p; renderNotes(); },
+    onSizeChange: function(s){ noteSize=s; notePage=1; renderNotes(); }
+  });
+}
+/* ============ 统计卡 → 跳转对应模块 ============ */
+function scrollToSec(id){
+  var el = document.getElementById(id);
+  if(!el) return;
+  var container = document.querySelector('.container');
+  if(!container){ el.scrollIntoView({behavior:'smooth', block:'start'}); return }
+  /* 用 getBoundingClientRect 相对定位（不受 offsetParent 影响） */
+  var target = container.scrollTop + (el.getBoundingClientRect().top - container.getBoundingClientRect().top) - 12;   // 顶部留 12px 间距
+  var start = container.scrollTop, diff = target - start, t0 = Date.now();
+  (function step(){
+    var p = Math.min(1, (Date.now()-t0)/320);
+    container.scrollTop = start + diff * (1-Math.pow(1-p,3));
+    if(p<1) requestAnimationFrame(step);
+  })();
+}
+
+/* ============ 导出 Obsidian（逐篇导入：每篇论文一个 .md） ============ */
+var expSel = {};   // 勾选的论文 id
+renderExpList();
+
+function renderExpList(){
+  var list = PM.papers.filter(function(p){return p.read>0 && !p._trashed});
+  if(!Object.keys(expSel).length){ list.forEach(function(p){ expSel[p.id]=1 }) }   // 默认全选
+  document.getElementById('expPaperList').innerHTML = list.map(function(p){
+    var ns = PM.notes.filter(function(n){return n.paper===p.id}).length;
+    return '<label style="display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid #f1f4f9;cursor:pointer;font-size:13px">'+
+      '<input type="checkbox" '+(expSel[p.id]?'checked':'')+' onchange="expToggle('+p.id+',this.checked)" style="accent-color:var(--primary)">'+
+      '<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 '+p.title+'</span>'+
+      '<span style="color:var(--text-3);font-size:12px;white-space:nowrap">已读 '+p.read+'% · 📝 '+ns+'</span></label>';
+  }).join('') || '<div style="padding:12px;color:var(--text-3);font-size:13px">暂无已读论文，先去文献库阅读吧</div>';
+  document.getElementById('expSelCount').textContent = Object.keys(expSel).filter(function(k){return expSel[k]}).length;
+}
+function expToggle(id, on){ expSel[id] = on ? 1 : 0; document.getElementById('expSelCount').textContent = Object.keys(expSel).filter(function(k){return expSel[k]}).length }
+function expToggleAll(on){
+  PM.papers.filter(function(p){return p.read>0 && !p._trashed}).forEach(function(p){ expSel[p.id] = on ? 1 : 0 });
+  renderExpList();
+}
+/* 单篇论文 → Obsidian Markdown（frontmatter + 精读总结 + 摘要 + 术语 + 笔记） */
+function buildPaperMd(p){
+  var md = '---\n';
+  md += 'title: ' + p.title + '\n';
+  md += 'titleZh: ' + p.titleZh + '\n';
+  md += 'authors: ' + p.authors + '\n';
+  md += 'venue: ' + p.venue + '\n';
+  md += 'year: ' + p.year + '\n';
+  md += 'doi: ' + (p.doi||'') + '\n';
+  md += 'category: ' + p.cat + '\n';
+  md += 'status: ' + p.status + '\n';
+  md += 'progress: ' + p.read + '\n';
+  md += 'tags: [' + p.tags.join(', ') + ', papermind]\n';
+  md += 'date: ' + new Date().getFullYear()+'-'+(new Date().getMonth()+1)+'-'+new Date().getDate() + '\n';
+  md += 'source: PaperMind\n---\n\n';
+  md += '# ' + p.title + '\n\n';
+  md += '> ' + p.titleZh + '\n\n';
+  md += '> 📌 **简介**：' + PM.getIntro(p) + '\n\n';
+  md += '## 💡 AI 精读总结\n\n';
+  md += '- **核心观点**：' + p.summary.core + '\n';
+  md += '- **研究问题**：' + p.summary.problem + '\n';
+  md += '- **方法要点**：' + p.summary.method.map(function(m){return m}).join('；') + '\n';
+  md += '- **主要结果**：' + p.summary.result + '\n';
+  md += '- **结论与局限**：' + p.summary.limit + '\n\n';
+  md += '## 📄 摘要\n\n';
+  md += '**中文**：' + p.absZh + '\n\n';
+  md += '**原文**：' + p.abs + '\n\n';
+  var ns = PM.notes.filter(function(n){return n.paper===p.id});
+  if(ns.length){
+    md += '## 📝 我的笔记\n\n';
+    ns.forEach(function(n){ md += '- ' + n.text + '\n' });
+    md += '\n';
+  }
+  if(p.glossary && p.glossary.length){
+    md += '## 📖 术语表\n\n';
+    p.glossary.forEach(function(g){ md += '- **' + g[0] + '**（' + g[1] + '）：' + g[2] + '\n' });
+    md += '\n';
+  }
+  md += '## 🔗 关联\n\n';
+  md += '- 来源：[[论文精读知识库]]\n';
+  md += '- 分类：`' + p.cat + '` · 状态：`' + p.status + '`\n';
+  return md;
+}
+/* Obsidian 文件名清理 */
+function expFileName(t){
+  return t.replace(/[\\/:*?"<>|#\[\]]/g, '_').slice(0, 80);
+}
+function exportSelected(){
+  var sel = PM.papers.filter(function(p){ return p.read>0 && !p._trashed && expSel[p.id] });
+  if(!sel.length){ toast('请先勾选要导出的论文'); return }
+  var count = 0;
+  sel.forEach(function(p, idx){
+    var md = buildPaperMd(p);
+    var blob = new Blob([md], {type:'text/markdown'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = expFileName(p.title) + '.md';
+    setTimeout(function(){ a.click() }, idx * 200);   // 逐个触发下载（Obsidian 每篇一个文件）
+  });
+  document.getElementById('mdPreview').value = buildPaperMd(sel[0]);
+  toast('⬇ 开始导出 ' + sel.length + ' 篇论文（每篇一个 .md）→ 放入 vault 的 02-Areas/论文精读/ 即完成导入');
+}
+function buildMd(){
+  var now = new Date();
+  var md = '---\n';
+  md += 'title: 论文精读知识库（导出快照）\n';
+  md += 'date: ' + now.getFullYear()+'-'+(now.getMonth()+1)+'-'+now.getDate()+'\n';
+  md += 'tags: [papermind, 论文精读, ' + PM.papers.filter(function(p){return p.read>0}).length + '-篇已读]\n';
+  md += 'source: PaperMind\n---\n\n';
+  md += '# 📚 论文精读知识库\n\n';
+  PM.papers.filter(function(p){return p.read>0 && !p._trashed}).forEach(function(p){
+    md += '## [[论文/'+p.title.replace(/[\[\]#|]/g,'')+']]（'+p.year+'）\n\n';
+    md += '> 💡 **一句话核心**：'+p.summary.core+'\n\n';
+    md += '**方法**：'+p.summary.method.join('；')+'\n\n';
+    md += '**结果**：'+p.summary.result+'\n\n';
+    md += '**局限**：'+p.summary.limit+'\n\n';
+    var ns = PM.notes.filter(function(n){return n.paper===p.id});
+    if(ns.length){ md += '### 我的笔记\n\n'; ns.forEach(function(n){ md += '- '+n.text+'\n' }); md += '\n' }
+    if(p.glossary && p.glossary.length){
+      md += '### 术语\n\n';
+      p.glossary.forEach(function(g){ md += '- **'+g[0]+'**（'+g[1]+'）：'+g[2]+'\n' });
+      md += '\n';
+    }
+  });
+  return md;
+}
+function exportMd(copy){
+  var md = buildMd();
+  document.getElementById('mdPreview').value = md;
+  if(copy){
+    navigator.clipboard && navigator.clipboard.writeText(md);
+    toast('✅ 已复制 '+md.length+' 字符 Markdown → 粘贴到 Obsidian 新建笔记即可');
+  }else{
+    var blob = new Blob([md], {type:'text/markdown'});
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '论文精读知识库.md';
+    a.click();
+    toast('⬇ 已下载 论文精读知识库.md');
+  }
+}
+</script>
+</body>
+</html>

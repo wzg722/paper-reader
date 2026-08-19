@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaperMind</title>
+<link rel="icon" type="image/png" href="favicon-32.png">
+<link rel="stylesheet" href="style.css?v=2301">
+<style>
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#eff6ff,#f5f3ff);padding:20px}
+.auth-card{background:#fff;border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow-lg);padding:36px;width:min(420px,100%)}
+.auth-card .logo{justify-content:center;font-size:19px;margin-bottom:6px}
+.auth-card .sub{text-align:center;color:var(--text-3);font-size:13px;margin-bottom:24px}
+.err{color:var(--danger);font-size:12.5px;margin-top:4px;min-height:18px}
+</style>
+</head>
+<body>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <a class="logo" href="index.html" style="justify-content:center;margin-bottom:4px"><span class="mark">研</span>PaperMind</a>
+    <div class="sub">论文精读 · AI 翻译 · 知识沉淀</div>
+
+    <div class="field">
+      <label>邮箱</label>
+      <input id="lgEmail" type="email" placeholder="name@company.com" value="wang@seaskylight.com">
+      <div class="err" id="lgEmailErr"></div>
+    </div>
+    <div class="field">
+      <label>密码</label>
+      <input id="lgPwd" type="password" placeholder="请输入密码" value="12345678">
+      <div class="err" id="lgPwdErr"></div>
+    </div>
+
+    <button class="btn btn-primary" style="width:100%;padding:11px;margin-top:8px" onclick="doLogin()">登 录</button>
+
+    <div style="text-align:center;margin-top:14px;font-size:13px;color:var(--text-3)">
+      没有账号？<a href="register.html">立即注册</a>
+    </div>
+    <div style="text-align:center;margin-top:10px">
+      <button class="btn btn-sm" onclick="demoLogin()">⚡ 演示账号一键登录（王工）</button>
+    </div>
+    <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--text-3)">
+      原型演示：登录态存 localStorage；真实产品为 Django 会话 + JWT
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="data.js?v=2301"></script>
+<script>
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2400)}
+
+function doLogin(){
+  var email = document.getElementById('lgEmail').value.trim();
+  var pwd = document.getElementById('lgPwd').value;
+  document.getElementById('lgEmailErr').textContent = '';
+  document.getElementById('lgPwdErr').textContent = '';
+  if(!/^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(email)){ document.getElementById('lgEmailErr').textContent='邮箱格式不正确'; return }
+  if(pwd.length < 6){ document.getElementById('lgPwdErr').textContent='密码至少 6 位'; return }
+  toast('⏳ 登录中…');
+  setTimeout(function(){
+    var u = Object.assign({}, PM.getUser(), {email:email});
+    PM.setUser(u);
+    toast('✅ 欢迎回来，'+u.name);
+    setTimeout(function(){ location.href='index.html' }, 600);
+  }, 800);
+}
+function demoLogin(){
+  var u = JSON.parse(JSON.stringify(PM.userDefaults));
+  PM.setUser(u);
+  toast('✅ 演示账号登录成功');
+  setTimeout(function(){ location.href='index.html' }, 500);
+}
+</script>
+</body>
+</html>

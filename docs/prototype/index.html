@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaperMind</title>
+<link rel="icon" type="image/png" href="favicon-32.png">
+<link rel="stylesheet" href="style.css?v=2301">
+</head>
+<body>
+
+<!-- 顶栏 -->
+<header class="topbar">
+  <a class="logo" href="index.html"><span class="mark">研</span>PaperMind</a>
+  <nav class="nav">
+    <a href="index.html" class="active" data-i18n="nav_discover">发现</a>
+    <a href="library.html" data-i18n="nav_library">文献库</a>
+    <a href="graph.html" data-i18n="nav_graph">图谱</a>
+    <a href="vault.html" data-i18n="nav_vault">知识库</a>
+    <a href="community.html" data-i18n="nav_community">社区交流</a>
+  </nav>
+  <div class="right">
+    <div class="user-menu">
+      <div class="avatar" id="avatarBtn">王</div>
+      <div class="um-drop hidden" id="userDrop">
+        <div class="um-head"><b id="umName">—</b><span id="umEmail"></span></div>
+        <a href="profile.html">👤 个人中心</a>
+        <a href="profile.html#edit">📝 修改资料</a>
+        <div class="um-sep"></div>
+        <a href="javascript:logout()">🚪 退出登录</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container" style="height:calc(100vh - var(--topbar-h));display:flex;flex-direction:column;overflow:hidden;width:100%;max-width:none;padding:0 24px;box-sizing:border-box">
+
+  <!-- 搜索横幅（发现页唯一搜索入口，顶栏搜索已去除避免重复） -->
+  <div class="card hero" style="padding:22px 34px;text-align:center;background:linear-gradient(135deg,#eff6ff,#f5f3ff);border-color:#dbeafe;flex:none">
+    <h1 style="font-size:22px;margin-bottom:6px">读懂每篇论文 🎓</h1>
+    <p style="color:var(--text-2);margin-bottom:14px;font-size:13.5px">AI 双语翻译 · 中心思想总结 · 划词笔记 · 论文问答 —— 一站式论文精读平台</p>
+    <div style="display:flex;justify-content:center;gap:10px">
+      <input id="heroSearch" placeholder="输入论文标题 / arXiv ID / DOI 直接检索…"
+             style="width:min(460px,100%);padding:10px 18px;border:1px solid #dbeafe;border-radius:999px;outline:none;background:#fff;font-size:14px"
+             onkeydown="if(event.key==='Enter')doSearch(this.value)">
+      <button class="btn btn-primary" style="padding:10px 24px" onclick="doSearch(document.getElementById('heroSearch').value)">搜索</button>
+    </div>
+    <div style="margin-top:10px">
+      <span style="color:var(--text-3);font-size:12.5px">热门：</span>
+      <span class="tag" onclick="doSearch('Transformer')">Transformer</span>
+      <span class="tag" onclick="doSearch('OCR')">OCR</span>
+      <span class="tag" onclick="doSearch('ResNet')">ResNet</span>
+      <span class="tag" onclick="doSearch('DETR')">DETR</span>
+    </div>
+  </div>
+
+  <!-- 两栏占满：左推荐 + 右热榜 -->
+  <div style="flex:1;min-height:0;display:grid;grid-template-columns:1fr 400px;gap:16px;margin-top:14px">
+
+    <!-- 推荐论文 -->
+    <div style="overflow-y:auto;padding-right:4px">
+      <div class="section-title" data-i18n="idx_recommend">📚 为你推荐 <a class="more" href="library.html">进入文献库 →</a></div>
+      <div class="card" style="padding:6px">
+        <div id="recList"></div>
+        <div class="pager" id="recPager"></div>
+      </div>
+    </div>
+
+    <!-- 热榜 -->
+    <div style="overflow-y:auto;padding-right:4px">
+      <div class="section-title" data-i18n="idx_hot">🔥 本周热榜 <span class="more" style="color:var(--text-3)">按引用量排序</span></div>
+      <div class="card" style="padding:6px">
+        <table class="tbl" id="hotTbl">
+          <thead><tr><th style="width:52px">排名</th><th>论文</th><th style="width:120px">年份</th><th style="width:130px">引用量</th><th style="width:88px">操作</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="pager" id="hotPager"></div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- 导入文献 modal -->
+<div class="modal-mask" id="importModal">
+  <div class="modal">
+    <span class="close" onclick="closeModal('importModal')">✕</span>
+    <h3>导入文献</h3>
+    <div class="tabs">
+      <button class="active" onclick="switchTab(this,0)">DOI / arXiv ID</button>
+      <button onclick="switchTab(this,1)">上传 PDF</button>
+      <button onclick="location.href='browse.html'">🌐 网页浏览导入</button>
+    </div>
+    <div class="field">
+      <label id="importLabel">输入 DOI 或 arXiv ID</label>
+      <input id="importInput" placeholder="例如 1706.03762 或 10.48550/arXiv.1706.03762">
+    </div>
+    <div id="pdfDrop" class="hidden" style="border:2px dashed var(--border-2);border-radius:12px;padding:34px;text-align:center;color:var(--text-3)">
+      <div style="font-size:36px">📄</div>点击或拖拽 PDF 文件到此处<br><span style="font-size:12px">（原型演示：解析元信息并入库）</span>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+      <button class="btn" onclick="closeModal('importModal')">取消</button>
+      <button class="btn btn-primary" onclick="fakeImport()">开始导入</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="data.js?v=2301"></script>
+<script src="user-menu.js?v=2301"></script>
+<script src="pager.js?v=2301"></script>
+<script>
+/* ---------- 通用 ---------- */
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2200)}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+function openImport(){document.getElementById('importModal').classList.add('show')}
+function switchTab(btn,idx){
+  document.querySelectorAll('#importModal .tabs button').forEach(function(b){b.classList.remove('active')});
+  btn.classList.add('active');
+  document.getElementById('pdfDrop').classList.toggle('hidden',idx===0);
+  document.getElementById('importLabel').textContent = idx===0 ? '输入 DOI 或 arXiv ID' : '上传本地 PDF 文件';
+}
+function fakeImport(){
+  var v=document.getElementById('importInput').value.trim();
+  closeModal('importModal');
+  if(!v){toast('已取消导入（未填写编号）');return}
+  toast('⏳ 正在解析文献元数据…');
+  setTimeout(function(){toast('✅ 已导入并自动匹配：'+PM.papers[0].title+'（演示）')},1200);
+}
+
+/* ---------- 搜索（demo：本地过滤 + 跳转文献库） ---------- */
+function doSearch(q){
+  q=(q||'').trim();
+  if(!q){toast('请输入搜索关键词');return}
+  toast('🔍 搜索「'+q+'」→ 演示跳转文献库（真实检索接入后端）');
+  setTimeout(function(){location.href='library.html?q='+encodeURIComponent(q)},600);
+}
+
+/* ---------- 卡片渲染 ---------- */
+function paperCard(p,rank){
+  var prog = p.read>0 ? '<div class="progress" title="阅读进度 '+p.read+'%"><i style="width:'+p.read+'%"></i></div>' : '';
+  return '<div class="paper-card" style="margin:8px 0;display:flex;gap:14px;align-items:flex-start">'+
+    (rank?'<div style="font-size:20px;font-weight:800;color:var(--text-3);width:34px;text-align:center;padding-top:6px">'+rank+'</div>':'')+
+    '<div style="flex:1;min-width:0">'+
+      '<div class="title" onclick="location.href=\'library.html?p='+p.id+'\'">'+p.title+'</div>'+
+      '<div class="intro-tag">'+PM.getIntro(p)+'</div>'+
+      '<div class="authors">'+p.authors+'</div>'+
+      '<div class="venue">'+p.venue+' · '+p.year+'</div>'+
+      '<div class="abs">'+p.abs+'</div>'+
+      '<div class="meta-row">'+
+        '<span class="badge '+(p.status==='读完'?'badge-green':p.status==='想读'?'badge-orange':'badge-blue')+'">'+p.status+'</span>'+
+        '<span class="badge badge-purple">'+p.cat+'</span>'+
+        p.tags.map(function(t){return '<span class="tag">'+t+'</span>'}).join('')+
+        '<span class="cite-num">被引 <b>'+(p.cites/10000).toFixed(1)+'万</b></span>'+
+        '<div style="flex:1"></div>'+prog+
+        '<button class="btn btn-sm" onclick="location.href=\'library.html?tab=reader&p='+p.id+'\'">'+PM.t('idx_read')+'</button>'+
+      '</div>'+
+    '</div></div>';
+}
+
+/* ---------- 推荐 + 热榜（分页渲染） ---------- */
+var recData = [], hotData = [];
+var recPage = 1, recSize = 3;   // 推荐卡片大，每页 3 条
+var hotPage = 1, hotSize = 5;   // 热榜表格每页 5 条
+
+(function(){
+  recData = PM.papers.filter(function(p){return !p._trashed}).sort(function(a,b){ return b.read-a.read });
+  hotData = PM.papers.filter(function(p){return !p._trashed}).sort(function(a,b){ return b.cites-a.cites });
+  renderRec();
+  renderHot();
+})();
+
+function renderRec(){
+  var total = recData.length, pages = Math.max(1, Math.ceil(total/recSize));
+  if(recPage > pages) recPage = pages;
+  var slice = recData.slice((recPage-1)*recSize, recPage*recSize);
+  document.getElementById('recList').innerHTML = slice.map(function(p){ return paperCard(p) }).join('');
+  renderPager({
+    el: document.getElementById('recPager'),
+    page: recPage, pageSize: recSize, total: total,
+    onChange: function(p){ recPage = p; renderRec(); },
+    onSizeChange: function(s){ recSize = s; recPage = 1; renderRec(); }
+  });
+}
+
+function renderHot(){
+  var total = hotData.length, pages = Math.max(1, Math.ceil(total/hotSize));
+  if(hotPage > pages) hotPage = pages;
+  var slice = hotData.slice((hotPage-1)*hotSize, hotPage*hotSize);
+  document.getElementById('hotTbl').querySelector('tbody').innerHTML = slice.map(function(p,i){
+    var rank = (hotPage-1)*hotSize + i + 1;   // 全局排名，翻页不重排
+    return '<tr><td style="font-weight:700;color:var(--text-3)">'+rank+'</td>'+
+      '<td><div class="title" style="font-size:14px" onclick="location.href=\'library.html?p='+p.id+'\'">'+p.title+'</div>'+
+      '<div style="color:var(--text-3);font-size:12px">'+p.authors.split(',')[0]+' 等 · '+p.tags.join(' / ')+'</div></td>'+
+      '<td>'+p.year+'</td><td><b style="color:var(--primary)">'+(p.cites/10000).toFixed(1)+'万</b></td>'+
+      '<td><button class="btn btn-sm" onclick="location.href=\'library.html?tab=reader&p='+p.id+'\'">'+PM.t('idx_read')+'</button></td></tr>';
+  }).join('');
+  renderPager({
+    el: document.getElementById('hotPager'),
+    page: hotPage, pageSize: hotSize, total: total,
+    onChange: function(p){ hotPage = p; renderHot(); },
+    onSizeChange: function(s){ hotSize = s; hotPage = 1; renderHot(); }
+  });
+}
+</script>
+</body>
+</html>

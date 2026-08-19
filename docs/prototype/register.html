@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaperMind</title>
+<link rel="icon" type="image/png" href="favicon-32.png">
+<link rel="stylesheet" href="style.css?v=2301">
+<style>
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#eff6ff,#f5f3ff);padding:20px}
+.auth-card{background:#fff;border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow-lg);padding:32px 36px;width:min(460px,100%)}
+.auth-card .logo{justify-content:center;font-size:19px;margin-bottom:6px}
+.auth-card .sub{text-align:center;color:var(--text-3);font-size:13px;margin-bottom:20px}
+.err{color:var(--danger);font-size:12px;margin-top:2px;min-height:16px}
+.ok{color:var(--accent);font-size:12px;margin-top:2px;min-height:16px}
+</style>
+</head>
+<body>
+
+<div class="auth-wrap">
+  <div class="auth-card">
+    <a class="logo" href="index.html" style="justify-content:center;margin-bottom:4px"><span class="mark">研</span>PaperMind</a>
+    <div class="sub">注册新账号</div>
+
+    <div class="field">
+      <label>姓名 *</label>
+      <input id="rgName" placeholder="请输入真实姓名">
+      <div class="err" id="rgNameErr"></div>
+    </div>
+    <div class="field">
+      <label>邮箱 *</label>
+      <input id="rgEmail" type="email" placeholder="name@company.com">
+      <div class="err" id="rgEmailErr"></div>
+    </div>
+    <div class="field">
+      <label>身份证号 *</label>
+      <input id="rgId" placeholder="18 位身份证号" maxlength="18">
+      <div class="err" id="rgIdErr"></div>
+      <div class="ok" id="rgIdOk"></div>
+    </div>
+    <div class="field">
+      <label>密码 *</label>
+      <input id="rgPwd" type="password" placeholder="至少 8 位，建议字母+数字">
+      <div class="err" id="rgPwdErr"></div>
+    </div>
+    <div class="field">
+      <label>确认密码 *</label>
+      <input id="rgPwd2" type="password" placeholder="再次输入密码">
+      <div class="err" id="rgPwd2Err"></div>
+    </div>
+
+    <button class="btn btn-primary" style="width:100%;padding:11px;margin-top:6px" onclick="doRegister()">注 册</button>
+
+    <div style="text-align:center;margin-top:14px;font-size:13px;color:var(--text-3)">
+      已有账号？<a href="login.html">去登录</a>
+    </div>
+    <div style="margin-top:12px;background:#f8fafc;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--text-3)">
+      校验规则：姓名必填 · 邮箱格式 · 身份证 18 位（17 数字 + 数字/X）· 密码 ≥8 位 · 两次密码一致<br>
+      原型演示：注册后写入 localStorage，真实产品为 Django 用户表 + 密码加密
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="data.js?v=2301"></script>
+<script>
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2400)}
+
+/* 身份证校验：18 位，前 17 位数字，末位数字或 X */
+function validIdCard(v){
+  if(v.length!==18) return false;
+  if(!/^\d{17}[\dXx]$/.test(v)) return false;
+  return true;
+}
+
+function doRegister(){
+  var name = document.getElementById('rgName').value.trim();
+  var email = document.getElementById('rgEmail').value.trim();
+  var id = document.getElementById('rgId').value.trim().toUpperCase();
+  var pwd = document.getElementById('rgPwd').value;
+  var pwd2 = document.getElementById('rgPwd2').value;
+
+  ['rgNameErr','rgEmailErr','rgIdErr','rgIdOk','rgPwdErr','rgPwd2Err'].forEach(function(e){ document.getElementById(e).textContent='' });
+
+  var ok = true;
+  if(!name){ document.getElementById('rgNameErr').textContent='请填写姓名'; ok=false }
+  if(!/^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(email)){ document.getElementById('rgEmailErr').textContent='邮箱格式不正确'; ok=false }
+  if(!validIdCard(id)){ document.getElementById('rgIdErr').textContent='身份证号格式不正确（18 位，末位可为 X）'; ok=false }
+  else document.getElementById('rgIdOk').textContent='✓ 身份证校验通过';
+  if(pwd.length < 8){ document.getElementById('rgPwdErr').textContent='密码至少 8 位'; ok=false }
+  if(pwd2 !== pwd){ document.getElementById('rgPwd2Err').textContent='两次输入的密码不一致'; ok=false }
+  if(!ok) return;
+
+  toast('⏳ 正在创建账号…');
+  setTimeout(function(){
+    var u = {name:name, email:email, idcard:id.slice(0,6)+'********'+id.slice(-4), role:'普通用户', avatar:PM.defaultAvatar, direction:PM.userDefaults.direction};
+    PM.setUser(u);
+    PM.getUserSources();   // 初始化该用户的默认收藏网站（6 个预置）
+    toast('✅ 注册成功，欢迎 '+name+'！已为您预置 6 个默认收藏网站');
+    setTimeout(function(){ location.href='index.html' }, 700);
+  }, 900);
+}
+</script>
+</body>
+</html>

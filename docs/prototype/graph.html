@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaperMind</title>
+<link rel="icon" type="image/png" href="favicon-32.png">
+<link rel="stylesheet" href="style.css?v=2301">
+<style>
+.graph-wrap{display:grid;grid-template-columns:1fr 8px var(--side-w,640px);height:calc(100vh - var(--topbar-h));overflow:hidden}
+.graph-side-resizer{cursor:col-resize;position:relative;background:transparent;z-index:3}
+.graph-side-resizer::after{content:'';position:absolute;left:3px;top:0;bottom:0;width:2px;background:var(--border);border-radius:2px;transition:.15s}
+.graph-side-resizer:hover::after,.graph-side-resizer.active::after{background:var(--primary);width:3px;left:2.5px}
+.graph-stage{position:relative;background:#0f172a;overflow:hidden}
+.graph-stage canvas{display:block;width:100%;height:100%;cursor:grab}
+.graph-stage canvas.dragging{cursor:grabbing}
+.graph-hint{position:absolute;left:14px;bottom:12px;color:#94a3b8;font-size:12px;background:rgba(15,23,42,.7);padding:6px 12px;border-radius:8px;z-index:5}
+.graph-legend{position:absolute;right:14px;bottom:12px;color:#cbd5e1;font-size:12px;background:rgba(15,23,42,.7);padding:8px 12px;border-radius:8px;z-index:5;display:flex;gap:10px}
+.graph-legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+.graph-side{background:#fafbfe;border-left:1px solid var(--border);overflow-y:auto;padding:14px}
+.side-ctrl{font-size:13px;margin-bottom:10px}
+.side-ctrl label{display:block;font-size:12px;color:var(--text-3);margin-bottom:4px;font-weight:600}
+.side-ctrl select{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;outline:none}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.filters .chip{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);background:#fff;cursor:pointer;color:var(--text-2)}
+.filters .chip.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.node-detail{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px;display:none}
+.node-detail .nd-title{font-weight:700;font-size:14.5px;line-height:1.4}
+.node-detail .nd-meta{color:var(--text-3);font-size:12.5px;margin:6px 0}
+.node-detail .nd-rels{font-size:12.5px;color:var(--text-2);margin-top:8px;border-top:1px dashed var(--border);padding-top:8px}
+.node-detail .nd-rels b{color:var(--text)}
+.arrow-hint{color:#94a3b8;font-size:11px;margin-top:6px}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="logo" href="index.html"><span class="mark">研</span>PaperMind</a>
+  <nav class="nav">
+    <a href="index.html" data-i18n="nav_discover">发现</a>
+    <a href="library.html" data-i18n="nav_library">文献库</a>
+    <a href="graph.html" class="active" data-i18n="nav_graph">图谱</a>
+    <a href="vault.html" data-i18n="nav_vault">知识库</a>
+    <a href="community.html" data-i18n="nav_community">社区交流</a>
+    
+  </nav>
+  <div class="right">
+    
+    <div class="user-menu">
+      <div class="avatar" id="avatarBtn">王</div>
+      <div class="um-drop hidden" id="userDrop">
+        <div class="um-head"><b id="umName">—</b><span id="umEmail"></span></div>
+        <a href="profile.html">👤 个人中心</a>
+        <a href="profile.html#edit">📝 修改资料</a>
+        
+        <div class="um-sep"></div>
+        <a href="javascript:logout()">🚪 退出登录</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="graph-wrap">
+  <!-- 图谱画布 -->
+  <div class="graph-stage" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="graph-hint">🖱 拖拽节点 · 滚轮缩放 · 点击查看详情 · 双击进入阅读</div>
+    <div class="graph-legend">
+      <span><i style="background:#60a5fa"></i>已读论文</span>
+      <span><i style="background:#334155"></i>相关论文</span>
+      <span><i style="background:#c084fc"></i>概念</span>
+    </div>
+  </div>
+
+  <!-- 拖拽分隔条（左右拖动调整侧栏宽度） -->
+  <div class="graph-side-resizer" id="sideResizer" title="左右拖动调整面板宽度"></div>
+
+  <!-- 侧栏 -->
+  <aside class="graph-side">
+    <!-- 知识点搜索 -->
+    <div style="background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px">
+      <div style="font-weight:700;font-size:13.5px;margin-bottom:8px">🔎 按知识点找论文</div>
+      <div style="display:flex;gap:6px">
+        <input id="kwInput" placeholder="输入知识点，如：注意力机制 / OCR / Transformer…"
+               style="flex:1;padding:7px 10px;border:1px solid var(--border);border-radius:8px;outline:none"
+               onkeydown="if(event.key==='Enter')kwSearch()">
+        <button class="btn btn-primary btn-sm" onclick="kwSearch()">搜索</button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">
+        <span style="font-size:11px;color:var(--text-3);align-self:center">热门：</span>
+        <span class="chip" style="font-size:11px" onclick="kwQuick('注意力机制')">注意力机制</span>
+        <span class="chip" style="font-size:11px" onclick="kwQuick('OCR')">OCR</span>
+        <span class="chip" style="font-size:11px" onclick="kwQuick('Transformer')">Transformer</span>
+        <span class="chip" style="font-size:11px" onclick="kwQuick('目标检测')">目标检测</span>
+        <span class="chip" style="font-size:11px" onclick="kwQuick('预训练')">预训练</span>
+      </div>
+    </div>
+
+    <div class="side-ctrl">
+      <label>从中心论文探索</label>
+      <select id="centerPick" onchange="rebuild()"></select>
+    </div>
+    <div class="side-ctrl">
+      <label>节点过滤</label>
+      <div class="filters">
+        <span class="chip on" data-f="paper" onclick="toggleFilter(this)">论文</span>
+        <span class="chip on" data-f="concept" onclick="toggleFilter(this)">概念</span>
+        <span class="chip on" data-f="unread" onclick="toggleFilter(this)">未读</span>
+      </div>
+    </div>
+    <button class="btn btn-sm" onclick="rebuild()" style="width:100%;margin-bottom:12px">↻ 重新布局</button>
+
+    <div class="node-detail" id="kwPanel" style="display:none">
+      <div style="font-weight:700;font-size:14px;margin-bottom:4px" id="kwTitle"></div>
+      <div style="color:var(--text-3);font-size:12.5px;margin-bottom:10px" id="kwSub"></div>
+      <div id="kwList"></div>
+    </div>
+
+    <div class="node-detail" id="nodeDetail">
+      <div class="nd-title" id="ndTitle"></div>
+      <div class="nd-meta" id="ndMeta"></div>
+      <div class="nd-rels" id="ndRels"></div>
+      <div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn btn-sm btn-primary" id="ndRead" style="display:none" onclick="openReader()">📖 阅读</button>
+        <button class="btn btn-sm" id="ndAdd" style="display:none" onclick="addToLib()">＋ 加入文献库</button>
+        <button class="btn btn-sm" id="ndExpand" style="display:none" onclick="centerOnSel()">◎ 以此为中心</button>
+      </div>
+      <!-- 相关论文推荐：点击节点右侧推荐新论文（已存在→阅读，新论文→导入） -->
+      <div id="ndRelatedWrap" style="display:none;margin-top:14px;border-top:1px dashed var(--border);padding-top:10px">
+        <div style="font-weight:700;font-size:13.5px;margin-bottom:8px">🔗 相关论文推荐（点击节点自动匹配）</div>
+        <div id="ndRelated"></div>
+        <div id="ndRelatedPager" style="margin-top:8px"></div>
+      </div>
+    </div>
+
+    <div style="color:var(--text-3);font-size:12px;margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+      🔎 探索路径建议：从「PP-OCR」出发 → 沿「序列识别 / 轻量化部署」概念展开 → 发现 SVTR / DB 等未读工作 → 加入文献库精读。
+    </div>
+  </aside>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="data.js?v=2301"></script>
+<script src="user-menu.js?v=2301"></script>
+<script src="pager.js?v=2301"></script>
+<script>
+var cv, ctx, W, H, dpr = window.devicePixelRatio || 1;
+var nodes = [], edges = [], selNode = null, dragging = null, dragId = null;
+var scale = 1, offsetX = 0, offsetY = 0;
+var showPaper = true, showConcept = true, showUnread = true;
+
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2400)}
+
+/* ============ 构图 ============ */
+function buildGraph(centerId){
+  var center = centerId || document.getElementById('centerPick').value;
+  var nodeMap = {};
+  PM.graphNodes.forEach(function(n){ nodeMap[n.id] = Object.assign({x:0,y:0,vx:0,vy:0,fixed:false}, n) });
+  /* 以中心节点为根的子图：BFS 深度 2（中心可为论文或概念） */
+  var keep = {}, depth = {center:0};
+  var q = [center]; keep[center]=1;
+  while(q.length){
+    var cur = q.shift();
+    PM.graphEdges.forEach(function(e){
+      var a=e[0], b=e[1];
+      if((a===cur || b===cur)){
+        var other = a===cur ? b : a;
+        if(!keep[other] && (depth[cur]||0) < 2){ keep[other]=1; depth[other]=(depth[cur]||0)+1; q.push(other) }
+      }
+    });
+  }
+  nodes = PM.graphNodes.filter(function(n){ return keep[n.id] }).map(function(n){ return nodeMap[n.id] });
+  edges = PM.graphEdges.filter(function(e){ return keep[e[0]] && keep[e[1]] }).map(function(e){ return [nodeMap[e[0]], nodeMap[e[1]]] });
+  seedPositions(center);
+  simulate(220);
+  fitView();
+}
+
+/* 初始位置：中心节点固定，其余随机圆环 */
+function seedPositions(center){
+  nodes.forEach(function(n,i){
+    if(n.id===center){ n.x=0; n.y=0; n.fixed=true; return }
+    var ang = (i/nodes.length)*Math.PI*2, r = 120 + (i%5)*40;
+    n.x = Math.cos(ang)*r; n.y = Math.sin(ang)*r;
+  });
+}
+
+/* 力导向迭代（斥力 + 弹簧 + 中心引力） */
+function simulate(iter){
+  for(var it=0; it<iter; it++){
+    /* 斥力 */
+    for(var i=0;i<nodes.length;i++) for(var j=i+1;j<nodes.length;j++){
+      var a=nodes[i], b=nodes[j];
+      var dx=a.x-b.x, dy=a.y-b.y, d2=dx*dx+dy*dy+1;
+      var d=Math.sqrt(d2), f=9000/d2;
+      var fx=dx/d*f, fy=dy/d*f;
+      if(!a.fixed){ a.vx+=fx; a.vy+=fy } if(!b.fixed){ b.vx-=fx; b.vy-=fy }
+    }
+    /* 弹簧 */
+    edges.forEach(function(e){
+      var a=e[0], b=e[1];
+      var dx=b.x-a.x, dy=b.y-a.y, d=Math.sqrt(dx*dx+dy*dy)+0.01;
+      var f=(d-150)*0.05;
+      var fx=dx/d*f, fy=dy/d*f;
+      if(!a.fixed){ a.vx+=fx; a.vy+=fy } if(!b.fixed){ b.vx-=fx; b.vy-=fy }
+    });
+    nodes.forEach(function(n){
+      if(n.fixed) return;
+      n.vx += -n.x*0.02; n.vy += -n.y*0.02;   /* 中心引力 */
+      n.vx *= 0.82; n.vy *= 0.82;
+      n.x += n.vx; n.y += n.vy;
+    });
+  }
+}
+
+/* 视图适配 */
+function fitView(){
+  var minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+  nodes.forEach(function(n){ minX=Math.min(minX,n.x);maxX=Math.max(maxX,n.x);minY=Math.min(minY,n.y);maxY=Math.max(maxY,n.y) });
+  var w=maxX-minX||1, h=maxY-minY||1;
+  scale = Math.min(W/(w+260), H/(h+260), 1.6);
+  offsetX = W/2 - (minX+maxX)/2*scale;
+  offsetY = H/2 - (minY+maxY)/2*scale;
+}
+
+/* ============ 绘制 ============ */
+function draw(){
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  var bg = ctx.createLinearGradient(0,0,W,H);
+  bg.addColorStop(0,'#0f172a'); bg.addColorStop(1,'#111c33');
+  ctx.fillStyle = bg; ctx.fillRect(0,0,W,H);
+
+  /* 边 */
+  edges.forEach(function(e){
+    var a=e[0], b=e[1];
+    var ax=a.x*scale+offsetX, ay=a.y*scale+offsetY, bx=b.x*scale+offsetX, by=b.y*scale+offsetY;
+    var active = selNode && (e[0]===selNode || e[1]===selNode);
+    ctx.strokeStyle = active ? 'rgba(96,165,250,.85)' : 'rgba(148,163,184,.22)';
+    ctx.lineWidth = active ? 2 : 1;
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(bx,by); ctx.stroke();
+  });
+
+  /* 节点 */
+  nodes.forEach(function(n){
+    if(!filterPass(n)) return;
+    var x=n.x*scale+offsetX, y=n.y*scale+offsetY;
+    var r = n.type==='concept' ? 9 : Math.max(7, Math.min(20, 5+Math.log10(n.cites||100)*1.8));
+    var active = selNode===n || (selNode && edges.some(function(e){ return (e[0]===selNode&&e[1]===n)||(e[1]===selNode&&e[0]===n) }));
+    var color = n.type==='concept' ? '#c084fc' : n.read ? '#60a5fa' : '#334155';
+    if(active) color = '#fbbf24';
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2);
+    ctx.fillStyle = color; ctx.fill();
+    if(n===selNode){ ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke() }
+    /* 标签 */
+    ctx.fillStyle = 'rgba(226,232,240,.9)';
+    ctx.font = '12px "Segoe UI","Microsoft YaHei",sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText(n.label, x, y+r+14);
+  });
+}
+
+function filterPass(n){
+  if(n.type==='concept') return showConcept;
+  if(!showPaper) return false;
+  if(n.read && !showUnread) return false;   /* 只看未读时隐藏已读？语义：showUnread=false → 隐藏未读 */
+  return true;
+}
+function toggleFilter(el){
+  el.classList.toggle('on');
+  var f = el.dataset.f;
+  if(f==='paper') showPaper = el.classList.contains('on');
+  if(f==='concept') showConcept = el.classList.contains('on');
+  if(f==='unread') showUnread = el.classList.contains('on');
+  draw();
+}
+
+/* ============ 交互 ============ */
+function canvasPos(e){
+  var r = cv.getBoundingClientRect();
+  return { x:(e.clientX-r.left-offsetX)/scale, y:(e.clientY-r.top-offsetY)/scale };
+}
+function hitNode(pos){
+  var best=null, bd=1e9;
+  nodes.forEach(function(n){
+    if(!filterPass(n)) return;
+    var d=Math.hypot(n.x-pos.x, n.y-pos.y);
+    if(d<28 && d<bd){ bd=d; best=n }
+  });
+  return best;
+}
+function rebuild(){
+  buildGraph();
+  selNode=null;
+  document.getElementById('nodeDetail').style.display='none';
+  document.getElementById('kwPanel').style.display='none';
+  draw();
+}
+
+/* ============ 知识点搜索 → 论文推荐 ============ */
+function kwQuick(kw){ document.getElementById('kwInput').value = kw; kwSearch(); }
+function kwSearch(){
+  var kw = document.getElementById('kwInput').value.trim().toLowerCase();
+  if(!kw){ toast('请输入知识点关键词'); return }
+  /* 匹配概念节点（label 或 keywords） */
+  var concept = PM.graphNodes.find(function(n){
+    if(n.type!=='concept') return false;
+    if(n.label.toLowerCase()===kw || n.label.toLowerCase().indexOf(kw)>=0) return true;
+    return (n.keywords||[]).some(function(k){ return k.toLowerCase()===kw || k.toLowerCase().indexOf(kw)>=0 || kw.indexOf(k.toLowerCase())>=0 });
+  });
+  /* 匹配论文标签（tags） */
+  var byTag = PM.graphNodes.filter(function(n){
+    if(n.type==='concept') return false;
+    return (n.tags||'').toLowerCase().split('·').some(function(t){ return t===kw || t.indexOf(kw)>=0 || kw.indexOf(t)>=0 });
+  });
+
+  /* 汇总相关论文：概念直接关联 + 标签命中 + 它们的引用邻居（间接关联） */
+  var rec = {}, order = [];
+  function add(node, via, direct){
+    if(node.type==='concept' || rec[node.id]) return;
+    rec[node.id] = {node:node, via:via, direct:direct};
+    order.push(node.id);
+  }
+  var seedIds = [];
+  if(concept){
+    edgesFrom(concept.id).forEach(function(id){ add(nodeById(id), concept.label, true) });
+    seedIds.push(concept.id);
+  }
+  byTag.forEach(function(n){ add(n, '标签「'+kw+'」', true); seedIds.push(n.id) });
+  /* 间接：与种子论文相邻的论文（一层） */
+  seedIds.forEach(function(sid){
+    PM.graphEdges.forEach(function(e){
+      if(e[0]===sid && e[1].charAt(0)==='p' || e[0].charAt(0)==='p' && e[1]===sid){
+        var other = e[0]===sid ? e[1] : e[0];
+        if(!rec[other]) add(nodeById(other), '与「'+nodeById(sid).label.slice(0,16)+'」关联', false);
+      }
+    });
+  });
+
+  var list = order.map(function(id){ return rec[id] })
+    .sort(function(a,b){ return (b.direct-a.direct) || (b.node.cites||0)-(a.node.cites||0) });
+
+  /* 渲染推荐面板 */
+  document.getElementById('kwPanel').style.display = 'block';
+  document.getElementById('nodeDetail').style.display = 'none';
+  selNode = null;
+  document.getElementById('kwTitle').textContent = '💡 知识点：「' + document.getElementById('kwInput').value.trim() + '」';
+  document.getElementById('kwSub').innerHTML = (concept? '命中概念「<b>'+concept.label+'</b>」' : '') +
+    (byTag.length? ' · '+byTag.length+' 篇论文标签命中' : '') +
+    ' · 推荐 '+list.length+' 篇（按关联度 + 引用量排序）';
+  document.getElementById('kwList').innerHTML = list.length ? list.map(function(r){
+    var n = r.node;
+    var directBadge = r.direct ? '<span class="badge badge-green" style="font-size:11px">直接相关</span>'
+                               : '<span class="badge badge-gray" style="font-size:11px">间接相关</span>';
+    var readBadge = n.read ? '<span class="badge badge-blue" style="font-size:11px">已读</span>'
+                           : '<span class="badge badge-orange" style="font-size:11px">未读</span>';
+    var btn = n.read
+      ? '<button class="btn btn-sm btn-primary" onclick="openReaderById(\''+n.id+'\')">📖 阅读</button>'
+      : '<button class="btn btn-sm" onclick="addToLibById(\''+n.id+'\')">📥 导入</button>';
+    return '<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:#fff">'+
+      '<div style="font-weight:600;font-size:13px">'+n.label+'</div>'+
+      '<div style="color:var(--text-3);font-size:12px;margin:4px 0">'+n.year+' · 被引 '+(n.cites/10000).toFixed(1)+'万 · '+n.tags+'</div>'+
+      '<div style="display:flex;gap:5px;margin-bottom:6px">'+directBadge+readBadge+'<span style="font-size:11px;color:var(--text-3);align-self:center">'+r.via+'</span></div>'+
+      '<div style="display:flex;gap:5px">'+
+        '<button class="btn btn-sm" onclick="centerOnNode(\''+n.id+'\')">◎ 图谱定位</button>'+
+        btn+
+      '</div></div>';
+  }).join('') : '<div style="color:var(--text-3);font-size:13px;padding:14px 0;text-align:center">未匹配到相关论文，换个知识点试试（如：注意力机制、OCR、Transformer）</div>';
+}
+
+function nodeById(id){ return PM.graphNodes.find(function(n){ return n.id===id }) }
+function edgesFrom(id){
+  var out=[];
+  PM.graphEdges.forEach(function(e){ if(e[0]===id) out.push(e[1]); if(e[1]===id) out.push(e[0]) });
+  return out;
+}
+/* 图谱定位：以该节点为中心展开（论文节点同步下拉框） */
+function centerOnNode(id){
+  if(id.charAt(0)==='p' && document.querySelector('#centerPick option[value="'+id+'"]'))
+    document.getElementById('centerPick').value = id;
+  buildGraph(id);
+  draw();
+  toast('已以「'+nodeById(id).label+'」为中心展开图谱');
+}
+function openReaderById(id){
+  var pid = {p0:0,p1:1,p2:2,p3:3,p4:4,p5:5,p6:6}[id];
+  if(pid!=null) location.href='library.html?tab=reader&p='+pid;   // 已读论文 → 阅读器直接开读
+}
+/* 相关论文推荐项渲染（共用：已存在→阅读，新论文→导入） */
+function relatedItemHtml(rn, direct){
+  var directBadge = direct ? '<span class="badge badge-green" style="font-size:11px">直接相关</span>'
+                           : '<span class="badge badge-gray" style="font-size:11px">间接相关</span>';
+  var stateBadge = rn.read ? '<span class="badge badge-blue" style="font-size:11px">已读</span>'
+                           : '<span class="badge badge-orange" style="font-size:11px">未读</span>';
+  var btn = rn.read
+    ? '<button class="btn btn-sm btn-primary" onclick="openReaderById(\''+rn.id+'\')">📖 阅读</button>'
+    : '<button class="btn btn-sm" onclick="addToLibById(\''+rn.id+'\')">📥 导入</button>';
+  return '<div style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;background:#fff">'+
+    '<div style="font-weight:600;font-size:13px">'+rn.label+'</div>'+
+    '<div style="color:var(--text-3);font-size:12px;margin:4px 0">'+rn.year+' · 被引 '+(rn.cites/10000).toFixed(1)+'万 · '+rn.tags+'</div>'+
+    '<div style="display:flex;gap:5px;align-items:center">'+directBadge+stateBadge+'</div>'+
+    '<div style="display:flex;gap:5px;margin-top:6px">'+btn+'</div></div>';
+}
+/* 点击节点 → 右侧推荐相关论文（直接/间接邻居） */
+/* 相关论文推荐（分页 5/页） */
+var relPapers = [], relPage = 1, relSize = 5;
+function renderRelatedPapers(n){
+  var related = [], seen = {}, nbrs = {};
+  /* 用全局边计算（不受当前子图限制）；PM.graphEdges 元素为 id 对 */
+  PM.graphEdges.forEach(function(e){
+    var a=e[0], b=e[1];
+    if(a===n.id || b===n.id){
+      var xid = a===n.id ? b : a;
+      var xn = nodeById(xid);
+      if(!xn) return;
+      nbrs[xid] = xn;
+      if((xn.type==='paper'||xn.type==='related') && !seen[xid]){ seen[xid]=1; related.push({node:xn, direct:true}); }
+    }
+  });
+  /* 二度关联：经一度概念节点关联的其他论文（间接相关） */
+  PM.graphEdges.forEach(function(e){
+    var a=e[0], b=e[1];
+    var an = nodeById(a), bn = nodeById(b);
+    if(!an || !bn) return;
+    var other = null;
+    if(an.type==='concept' && (bn.type==='paper'||bn.type==='related') && nbrs[a]) other = bn;
+    else if(bn.type==='concept' && (an.type==='paper'||an.type==='related') && nbrs[b]) other = an;
+    if(other && !seen[other.id]){ seen[other.id]=1; related.push({node:other, direct:false}); }
+  });
+  relPapers = related;
+  relPage = 1;
+  renderRelList();
+  document.getElementById('ndRelatedWrap').style.display = 'block';
+}
+function renderRelList(){
+  var total = relPapers.length, pages = Math.max(1, Math.ceil(total/relSize));
+  if(relPage > pages) relPage = pages;
+  var slice = relPapers.slice((relPage-1)*relSize, relPage*relSize);
+  document.getElementById('ndRelated').innerHTML = slice.length
+    ? slice.map(function(r){ return relatedItemHtml(r.node, r.direct) }).join('')
+    : '<div style="color:var(--text-3);font-size:13px;padding:10px 0;text-align:center">暂无关联论文</div>';
+  renderPager({el: document.getElementById('ndRelatedPager'), page: relPage, pageSize: relSize, total: total,
+    onChange: function(p){ relPage=p; renderRelList(); },
+    onSizeChange: function(s){ relSize=s; relPage=1; renderRelList(); }});
+}
+function addToLibById(id){
+  var n = nodeById(id);
+  if(!n || n.read) return;
+  n.read = true;
+  toast('✅ 「'+n.label+'」已加入文献库（真实产品将抓取元数据+PDF）');
+  if(!document.getElementById('kwPanel').style.display || document.getElementById('kwPanel').style.display==='none'){
+    if(selNode && selNode.type==='paper') renderRelatedPapers(selNode);
+    draw();
+  } else kwSearch();
+}
+function centerOnSel(){
+  if(!selNode) return;
+  document.getElementById('centerPick').value = selNode.id;
+  rebuild();
+}
+function openReader(){
+  var pid = {p0:0,p1:1,p2:2,p3:3,p4:4,p5:5,p6:6}[selNode.id];
+  if(pid!=null) location.href='library.html?tab=reader&p='+pid;
+  else toast('相关论文未收录本地，可先加入文献库');
+}
+function addToLib(){
+  if(!selNode || selNode.type!=='paper') return;
+  selNode.read = true;
+  toast('✅ 「'+selNode.label+'」已加入文献库（真实产品将抓取元数据+PDF）');
+  draw();
+}
+function showDetail(n){
+  selNode=n;
+  /* 概念节点（知识点）：直接展示相关论文推荐 */
+  if(n.type==='concept'){
+    document.getElementById('nodeDetail').style.display='none';
+    document.getElementById('kwPanel').style.display='block';
+    document.getElementById('kwInput').value = n.label;
+    kwSearch();
+    return;
+  }
+  document.getElementById('kwPanel').style.display='none';
+  document.getElementById('nodeDetail').style.display='block';
+  document.getElementById('ndTitle').textContent = n.label;
+  document.getElementById('ndMeta').innerHTML = n.type==='concept'
+    ? '<span class="badge badge-purple">概念</span>'
+    : (n.year||'')+' · 被引 '+(n.cites/10000).toFixed(1)+'万 · '+(n.read?'<span class="badge badge-green">已读</span>':'<span class="badge badge-orange">未读</span>')+'<br>'+n.tags;
+  var cites=[], cited=[], concepts=[];
+  edges.forEach(function(e){
+    if(e[0].id===n.id) (e[1].type==='concept'?concepts:cites).push(e[1].label);
+    if(e[1].id===n.id) (e[0].type==='concept'?concepts:cited).push(e[0].label);
+  });
+  var rels='';
+  if(cited.length) rels+='<div><b>被以下引用/关联：</b>'+cited.join('、')+'</div>';
+  if(cites.length) rels+='<div style="margin-top:4px"><b>引用/关联：</b>'+cites.join('、')+'</div>';
+  if(concepts.length) rels+='<div style="margin-top:4px"><b>涉及概念：</b>'+concepts.join('、')+'</div>';
+  document.getElementById('ndRels').innerHTML = rels+'<div class="arrow-hint">箭头方向 = 引用方向（A→B：A 引用 B）</div>';
+  document.getElementById('ndRead').style.display = n.type==='paper' && n.read ? 'inline-flex' : 'none';
+  document.getElementById('ndAdd').style.display = n.type==='paper' && !n.read ? 'inline-flex' : 'none';
+  document.getElementById('ndExpand').style.display = 'inline-flex';
+  /* 点击论文节点 → 右侧推荐相关论文（已存在→阅读，新论文→导入） */
+  renderRelatedPapers(n);
+}
+
+/* 事件绑定 */
+(function(){
+  cv = document.getElementById('cv');
+  ctx = cv.getContext('2d');
+  function resize(){
+    var r = document.getElementById('stage').getBoundingClientRect();
+    W = r.width; H = r.height;
+    cv.width = W*dpr; cv.height = H*dpr;
+    cv.style.width = W+'px'; cv.style.height = H+'px';
+    draw();
+  }
+  window.addEventListener('resize', resize);
+  /* 侧栏拖拽改变宽度时，画布尺寸跟随（grid 列变化不触发 window resize） */
+  if(window.ResizeObserver){
+    new ResizeObserver(resize).observe(document.getElementById('stage'));
+  }
+
+  /* 侧栏宽度拖拽（左右拖大拖小，记忆用户偏好） */
+  var wrap = document.querySelector('.graph-wrap');
+  var resizer = document.getElementById('sideResizer');
+  var dragStartX = 0, dragStartW = 640;
+  function sideDragMove(e){
+    var w = Math.min(960, Math.max(640, dragStartW + (dragStartX - e.clientX)));   // 向左拖=变宽，640-960px
+    wrap.style.setProperty('--side-w', w+'px');
+  }
+  function sideDragUp(){
+    document.removeEventListener('mousemove', sideDragMove);
+    document.removeEventListener('mouseup', sideDragUp);
+    resizer.classList.remove('active');
+    document.body.style.userSelect = '';
+    try{ localStorage.setItem('pm_side_w', wrap.style.getPropertyValue('--side-w')) }catch(e){}
+  }
+  if(resizer){
+    resizer.addEventListener('mousedown', function(e){
+      e.preventDefault();
+      dragStartX = e.clientX;
+      dragStartW = parseInt(getComputedStyle(wrap).getPropertyValue('--side-w')) || 640;
+      resizer.classList.add('active');
+      document.body.style.userSelect = 'none';
+      document.addEventListener('mousemove', sideDragMove);
+      document.addEventListener('mouseup', sideDragUp);
+    });
+    var savedW = localStorage.getItem('pm_side_w');
+    if(savedW && /^\d+px$/.test(savedW)){
+      var sw = parseInt(savedW, 10);
+      sw = Math.min(960, Math.max(640, sw));   // 旧缓存也限制在 640-960
+      wrap.style.setProperty('--side-w', sw+'px');
+    }
+  }
+
+  /* 中心论文下拉 */
+  var opts = PM.papers.map(function(p){ return '<option value="p'+p.id+'">'+p.title+'</option>' }).join('');
+  document.getElementById('centerPick').innerHTML = opts;
+  document.getElementById('centerPick').value = 'p4';   /* 默认从 PP-OCR 出发 */
+
+  cv.addEventListener('wheel', function(e){
+    e.preventDefault();
+    var pos = canvasPos(e);
+    var ns = scale * (e.deltaY<0 ? 1.12 : 0.89);
+    ns = Math.max(0.25, Math.min(3, ns));
+    offsetX = e.clientX - cv.getBoundingClientRect().left - (pos.x)*ns;
+    offsetY = e.clientY - cv.getBoundingClientRect().top  - (pos.y)*ns;
+    scale = ns;
+    draw();
+  }, {passive:false});
+
+  cv.addEventListener('mousedown', function(e){
+    var pos = canvasPos(e);
+    var n = hitNode(pos);
+    if(n){ dragId = n.id; n.fixed=true; dragging=n; cv.classList.add('dragging') }
+    else { selNode=null; document.getElementById('nodeDetail').style.display='none'; draw() }
+  });
+  window.addEventListener('mousemove', function(e){
+    if(!dragging) return;
+    var pos = canvasPos(e);
+    dragging.x = pos.x; dragging.y = pos.y;
+    draw();
+  });
+  window.addEventListener('mouseup', function(e){
+    if(dragging){
+      var pos = canvasPos(e);
+      var n = hitNode(pos);
+      if(n && n.id===dragId) showDetail(n);
+      dragging.fixed = false;
+      dragging = null; dragId=null;
+      cv.classList.remove('dragging');
+      draw();
+    }
+  });
+  cv.addEventListener('dblclick', function(e){
+    var n = hitNode(canvasPos(e));
+    if(n && n.type==='paper' && n.read) openReader();
+    else if(n && n.type==='paper'){ centerOnSel(); }
+  });
+
+  resize();
+  rebuild();
+})();
+</script>
+</body>
+</html>

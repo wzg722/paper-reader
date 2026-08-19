@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaperMind</title>
+<link rel="icon" type="image/png" href="favicon-32.png">
+<link rel="stylesheet" href="style.css?v=2301">
+<style>
+#srcGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(185px,1fr));gap:12px}
+.src-card{position:relative;border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:.15s;background:#fff}
+.src-card:hover{border-color:var(--primary);box-shadow:var(--shadow)}
+.src-card.active{border-color:var(--primary);background:var(--primary-light)}
+.src-card .nm{font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px}
+.src-card .ds{font-size:12px;color:var(--text-3);margin-top:2px;line-height:1.5}
+.src-card .url{font-size:11px;color:var(--text-3);margin-top:4px;word-break:break-all}
+.src-card .del{position:absolute;top:6px;right:8px;font-size:13px;color:var(--text-3);cursor:pointer;display:none;line-height:1;padding:2px}
+.src-card:hover .del{display:block}
+.src-card .del:hover{color:var(--danger)}
+.src-card .cust-tag{font-size:10px;color:var(--purple);background:#f5f3ff;border-radius:3px;padding:0 5px;margin-left:4px}
+.add-card{border:2px dashed var(--border-2);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--text-3);font-size:13px;min-height:86px}
+.add-card:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-light)}
+.br-item{border-bottom:1px solid var(--border);padding:12px 4px;display:flex;gap:12px;align-items:flex-start}
+.br-item:hover{background:#fafbfe}
+.br-item .ck{margin-top:4px}
+.br-item .ttl{font-size:14.5px;font-weight:600;cursor:pointer}
+.br-item .ttl:hover{color:var(--primary)}
+.br-item .au{color:var(--text-2);font-size:12.5px;margin-top:2px}
+.br-item .meta2{color:var(--text-3);font-size:12px;margin-top:2px;display:flex;gap:12px;flex-wrap:wrap}
+.browse-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.imported-tag{font-size:11px;color:var(--accent);background:#ecfdf5;border-radius:4px;padding:1px 6px}
+.sel-bar{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-2);padding:8px 4px 0}
+.adaptor-empty{padding:44px 20px;text-align:center;color:var(--text-3)}
+.adaptor-empty .big{font-size:40px;margin-bottom:8px}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="logo" href="index.html"><span class="mark">研</span>PaperMind</a>
+  <nav class="nav">
+    <a href="index.html" data-i18n="nav_discover">发现</a>
+    <a href="library.html" data-i18n="nav_library">文献库</a>
+    <a href="graph.html" data-i18n="nav_graph">图谱</a>
+    <a href="vault.html" data-i18n="nav_vault">知识库</a>
+    <a href="community.html" data-i18n="nav_community">社区交流</a>
+    
+  </nav>
+  <div class="right">
+    
+    <div class="user-menu">
+      <div class="avatar" id="avatarBtn">王</div>
+      <div class="um-drop hidden" id="userDrop">
+        <div class="um-head"><b id="umName">—</b><span id="umEmail"></span></div>
+        <a href="profile.html">👤 个人中心</a>
+        <a href="profile.html#edit">📝 修改资料</a>
+        
+        <div class="um-sep"></div>
+        <a href="javascript:logout()">🚪 退出登录</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container" style="max-width:1100px">
+
+  <div class="card" style="padding:10px 16px;margin-top:8px;background:var(--primary-light);border-color:#dbeafe;font-size:13px;color:var(--text-2)">
+    ℹ️ 网页浏览导入已并入<b>文献库 →「⭐ 收藏网站」</b>Tab（<a href="library.html">点击前往</a>）。此页面保留用于兼容旧入口，功能与文献库内一致。
+  </div>
+
+  <div class="section-title" style="margin-top:8px">🌐 网页浏览导入
+    <span class="more" style="color:var(--text-3);font-size:13px">在站内浏览外部论文网站，勾选即入库 —— 等效浏览器插件的"一键抓取"</span>
+  </div>
+
+  <!-- 来源站点（预置 + 自定义 + 添加） -->
+  <div id="srcGrid"></div>
+
+  <!-- 检索工具栏 -->
+  <div class="card browse-toolbar" style="padding:14px 18px;margin-top:16px">
+    <input id="browseQ" placeholder="在当前来源中搜索关键词（如 scene text / transformer）…"
+           style="flex:1;padding:9px 14px;border:1px solid var(--border);border-radius:999px;outline:none"
+           onkeydown="if(event.key==='Enter')doBrowseSearch()">
+    <button class="btn btn-primary" onclick="doBrowseSearch()">搜索</button>
+    <span style="color:var(--text-3);font-size:12.5px" id="resultInfo"></span>
+    <div style="flex:1"></div>
+    <button class="btn btn-primary" id="importBtn" onclick="importSelected()">＋ 导入所选（<span id="selCount">0</span>）</button>
+  </div>
+
+  <!-- 结果列表（分页） -->
+  <div class="card" style="padding:8px 18px;margin-top:12px">
+    <div class="sel-bar">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" id="selAll" onchange="toggleSelAll(this)"> 全选本页
+      </label>
+      <span style="color:var(--text-3)">勾选跨页保留 · 已选 <b id="selTotal" style="color:var(--primary)">0</b> 篇</span>
+    </div>
+    <div id="resultList"></div>
+    <div class="pager" id="browsePager"></div>
+  </div>
+
+  <div class="card" style="padding:16px 18px;margin-top:16px;background:var(--primary-light);border-color:#dbeafe">
+    <b>🔌 真实产品接入方式</b>
+    <div style="color:var(--text-2);font-size:13px;margin-top:4px">
+      预置来源由后端官方 API 驱动（arXiv / Semantic Scholar / ACL Anthology / OpenReview）；
+      <b>自定义来源 = 为站点配置"检索适配器"</b>（解析其检索结果页/开放接口），可添加任意论文网站。
+      浏览器直连外部站点有 CORS 限制，正式版全部走后端代理；抓取结果自动匹配元数据 + 下载 PDF + 生成 AI 标签。
+    </div>
+  </div>
+
+</div>
+
+<!-- 添加网站 modal -->
+<div class="modal-mask" id="addModal">
+  <div class="modal" style="max-width:480px">
+    <span class="close" onclick="closeAdd()">✕</span>
+    <h3>＋ 添加自定义来源网站</h3>
+    <div class="field"><label>网站名称 *</label><input id="addName" placeholder="例如：DBLP、IEEE Xplore、PubMed…"></div>
+    <div class="field"><label>网站域名 *</label><input id="addUrl" placeholder="例如：dblp.org（不带 https://）"></div>
+    <div class="field"><label>描述</label><input id="addDesc" placeholder="这个网站收录什么方向的论文？（可选）"></div>
+    <div class="field"><label>图标（Emoji，可选）</label><input id="addIcon" placeholder="🔬 不填则取名称首字" maxlength="4"></div>
+    <div style="background:#f8fafc;border-radius:8px;padding:10px 12px;font-size:12.5px;color:var(--text-2)">
+      💡 正式版中，添加后需配置该站点的<b>检索适配器</b>（解析搜索结果）；原型演示中自定义来源展示为"待接入"状态。
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button class="btn" onclick="closeAdd()">取消</button>
+      <button class="btn btn-primary" onclick="saveSource()">添加</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="data.js?v=2301"></script>
+<script src="user-menu.js?v=2301"></script>
+<script src="pager.js?v=2301"></script>
+<script>
+/* ============ 状态 ============ */
+var srcList = [];           // 预置 + 自定义
+var curSrc = 0;
+var imported = {}, selected = {};
+var filtered = [], curPage = 1, pageSize = 10;
+var LS_KEY = 'pm_custom_sources';
+
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2400)}
+
+/* ============ 来源列表 ============ */
+function loadSources(){
+  srcList = PM.browseSources.slice();
+  try{
+    var c = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+    c.forEach(function(s){ srcList.push({name:s.name, icon:s.icon||s.name[0], type:'custom', url:s.url, desc:s.desc||'', mock:[]}) });
+  }catch(e){}
+}
+function saveCustom(){
+  var c = srcList.filter(function(s){return s.type==='custom'}).map(function(s){return {name:s.name, icon:s.icon, url:s.url, desc:s.desc}});
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(c)) }catch(e){}
+}
+
+function renderSrcGrid(){
+  var html = srcList.map(function(s,i){
+    var del = s.type==='custom'
+      ? '<span class="del" title="删除该来源" onclick="event.stopPropagation();delSource('+i+')">✕</span>' : '';
+    var cust = s.type==='custom' ? '<span class="cust-tag">自定义</span>' : '';
+    return '<div class="src-card'+(i===curSrc?' active':'')+'" onclick="pickSrc('+i+')">'+
+      del+
+      '<div class="nm">'+s.icon+' '+s.name+cust+'</div>'+
+      '<div class="ds">'+s.desc+'</div>'+
+      '<div class="url">'+s.url+'</div></div>';
+  }).join('');
+  html += '<div class="add-card" onclick="openAdd()">＋<span>添加网站</span></div>';
+  document.getElementById('srcGrid').innerHTML = html;
+}
+
+function pickSrc(i){
+  curSrc = i; curPage = 1; selected = {};
+  document.querySelectorAll('.src-card').forEach(function(c,j){ c.classList.toggle('active', j===i) });
+  document.getElementById('browseQ').value='';
+  refreshList();
+}
+
+/* ============ 自定义来源管理 ============ */
+function openAdd(){ document.getElementById('addModal').classList.add('show'); setTimeout(function(){document.getElementById('addName').focus()},100) }
+function closeAdd(){ document.getElementById('addModal').classList.remove('show') }
+function saveSource(){
+  var name = document.getElementById('addName').value.trim();
+  var url  = document.getElementById('addUrl').value.trim().replace(/^https?:\/\//,'').replace(/\/+$/,'');
+  var desc = document.getElementById('addDesc').value.trim();
+  var icon = document.getElementById('addIcon').value.trim() || name[0];
+  if(!name){ toast('请填写网站名称'); return }
+  if(!url || !/^[\w-]+(\.[\w-]+)+/.test(url)){ toast('请填写有效域名，如 dblp.org'); return }
+  var dup = srcList.some(function(s){ return s.url.toLowerCase()===url.toLowerCase() });
+  if(dup){ toast('该域名已存在，请勿重复添加'); return }
+  srcList.push({name:name, icon:icon, type:'custom', url:url, desc:desc||'自定义来源', mock:[]});
+  saveCustom();
+  closeAdd();
+  document.getElementById('addName').value=''; document.getElementById('addUrl').value='';
+  document.getElementById('addDesc').value=''; document.getElementById('addIcon').value='';
+  toast('✅ 已添加来源「'+name+'」，点击卡片查看（适配器待接入）');
+  renderSrcGrid();
+}
+function delSource(i){
+  var s = srcList[i];
+  if(s.type!=='custom') return;
+  if(!confirm('确定删除自定义来源「'+s.name+'」？')) return;
+  srcList.splice(i,1);
+  saveCustom();
+  if(curSrc >= srcList.length) curSrc = 0;
+  curPage = 1;
+  toast('已删除「'+s.name+'」');
+  renderSrcGrid();
+  refreshList();
+}
+
+/* ============ 检索与渲染 ============ */
+function doBrowseSearch(){
+  var q = document.getElementById('browseQ').value.trim().toLowerCase();
+  toast(q ? '🔍 在当前来源检索「'+q+'」（真实产品走后端代理搜索 API）' : '显示该来源全部结果');
+  curPage = 1;
+  refreshList(q);
+}
+
+function refreshList(q){
+  var s = srcList[curSrc];
+  var query = (q!==undefined ? q : document.getElementById('browseQ').value.trim().toLowerCase());
+  var list = (s.mock||[]);
+  if(query) list = list.filter(function(p){ return (p.title+' '+p.authors+' '+(p.note||'')).toLowerCase().indexOf(query)>=0 });
+  filtered = list;
+
+  /* 自定义来源（无适配器）→ 待接入空状态 */
+  if(s.type==='custom' && !list.length){
+    document.getElementById('resultInfo').textContent = s.name+' · 适配器待接入';
+    document.getElementById('resultList').innerHTML =
+      '<div class="adaptor-empty"><div class="big">🔌</div>'+
+      '<b>「'+s.name+'」的检索适配器尚未接入</b>'+
+      '<div style="font-size:13px;margin-top:6px;max-width:520px;margin-left:auto;margin-right:auto">正式版中，为该站点配置适配器（解析其检索结果页或开放 API）后即可像 arXiv 一样站内检索、勾选导入。<br>当前可以先在新窗口访问该网站查找论文，再用「DOI/arXiv 导入」或「上传 PDF」入库。</div>'+
+      '<div style="margin-top:14px"><a class="btn btn-primary" href="https://'+s.url+'" target="_blank">↗ 访问 '+s.name+'</a>'+
+      '<button class="btn" style="margin-left:8px" onclick="location.href=\'library.html\'">去文献库手动导入</button></div></div>';
+    document.getElementById('browsePager').innerHTML = '';
+    updSelUI();
+    return;
+  }
+
+  var total = filtered.length, pages = Math.max(1, Math.ceil(total/pageSize));
+  if(curPage > pages) curPage = pages;
+  document.getElementById('resultInfo').textContent = query ? '「'+query+'」共 '+total+' 条 · 来源 '+s.name : s.name+' · '+total+' 条结果';
+
+  var slice = filtered.slice((curPage-1)*pageSize, curPage*pageSize);
+  document.getElementById('resultList').innerHTML = slice.length ? slice.map(function(p){
+    var done = imported[p.id];
+    return '<div class="br-item">'+
+      '<input type="checkbox" class="ck" data-id="'+p.id+'"'+(selected[p.id]?' checked':'')+' onchange="onSel(this)">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="ttl" onclick="openPaper(\''+p.id+'\')">'+p.title+'</div>'+
+        '<div class="au">'+p.authors+'</div>'+
+        '<div class="meta2"><span>'+p.venue+'</span><span>📅 '+p.date+'</span>'+(p.note?'<span style="color:var(--primary)">'+p.note+'</span>':'')+
+        (done?'<span class="imported-tag">✓ 已导入</span>':'')+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:6px">'+
+        '<a class="btn btn-sm" href="'+paperLink(s,p)+'" target="_blank">原文 ↗</a>'+
+        '<button class="btn btn-sm '+(done?'':'btn-primary')+'" onclick="quickImport(\''+p.id+'\')">'+(done?'已导入':'导入')+'</button>'+
+      '</div></div>';
+  }).join('') : '<div class="empty"><div class="big">🔍</div>无匹配结果，换个关键词试试</div>';
+
+  updSelUI();
+  renderPager({
+    el: document.getElementById('browsePager'),
+    page: curPage, pageSize: pageSize, total: total,
+    onChange: function(p){ curPage=p; refreshList(query); document.querySelector('.container').scrollIntoView({behavior:'smooth'}); },
+    onSizeChange: function(sz){ pageSize=sz; curPage=1; refreshList(query); }
+  });
+}
+
+/* 原文链接：按来源动态生成（arXiv 用 ID 直达，其余走站点搜索） */
+function paperLink(s, p){
+  if(p.url) return p.url;
+  if(s.name==='arXiv') return 'https://arxiv.org/abs/'+p.id;
+  var kw = p.title.split(':')[0].split('?')[0].trim();
+  return 'https://'+s.url+'/search/?q='+encodeURIComponent(kw);
+}
+
+/* ============ 勾选/导入 ============ */
+function onSel(cb){ if(cb.checked) selected[cb.dataset.id]=1; else delete selected[cb.dataset.id]; updSelUI() }
+function toggleSelAll(cb){
+  var slice = filtered.slice((curPage-1)*pageSize, curPage*pageSize);
+  slice.forEach(function(p){ if(cb.checked) selected[p.id]=1; else delete selected[p.id]; });
+  document.querySelectorAll('.br-item .ck').forEach(function(c){ c.checked = !!selected[c.dataset.id] });
+  updSelUI();
+}
+function updSelUI(){
+  document.getElementById('selCount').textContent = Object.keys(selected).length;
+  document.getElementById('selTotal').textContent = Object.keys(selected).length;
+}
+function openPaper(id){ toast('演示：真实产品将打开该来源的论文详情（元数据+摘要）供预览') }
+function quickImport(id){
+  if(imported[id]) return;
+  imported[id] = 1; delete selected[id];
+  toast('✅ 已导入：'+id+'（自动抓取元数据 + PDF + AI 标签，可到文献库查看）');
+  refreshList();
+}
+function importSelected(){
+  var ids = Object.keys(selected);
+  if(!ids.length){ toast('请先勾选要导入的论文'); return }
+  ids.forEach(function(id){ imported[id]=1 });
+  selected = {};
+  toast('⏳ 正在批量导入 '+ids.length+' 篇（抓元数据 + 下载 PDF）…');
+  setTimeout(function(){
+    toast('✅ 成功导入 '+ids.length+' 篇 → 已入文献库并生成 AI 标签');
+    refreshList();
+  },1500);
+}
+
+/* ============ 初始化 ============ */
+loadSources();
+renderSrcGrid();
+refreshList();
+</script>
+</body>
+</html>

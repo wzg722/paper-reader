@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>PaperMind</title>
+<style>
+/* ===== 与 style.css 完全一致的分页器 v2 样式（内联，确保任何浏览器都能渲染） ===== */
+:root{--primary:#2563eb;--text:#1e293b;--text-2:#475569;--text-3:#94a3b8;--border:#e2e8f0}
+body{font-family:system-ui,"Microsoft YaHei",sans-serif;background:#f1f5f9;margin:0;padding:24px;color:var(--text)}
+.wrap{max-width:900px;margin:0 auto}
+.card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:20px}
+h3{margin:0 0 12px;font-size:15px}
+.term-row{display:flex;gap:10px;padding:8px 4px;border-bottom:1px solid #f1f5f9;font-size:13.5px;align-items:center}
+.term-row .en{font-weight:600;width:170px}
+.term-row .zh{color:var(--primary);width:110px}
+.term-row .from{color:var(--text-3);font-size:12px}
+
+/* ---------- 分页组件 v3（强制单行：固定高度+溢出隐藏） ---------- */
+.pager{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:nowrap;height:38px;overflow:hidden;padding:0 6px;border-top:1px solid #eef1f6;margin-top:4px;white-space:nowrap;box-sizing:border-box}
+.pager-info{font-size:12.5px;color:var(--text-3);white-space:nowrap;letter-spacing:.2px;flex-shrink:0}
+.pager-info b{color:var(--text);font-weight:600}
+.pager-btns{display:flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0}
+.pager-btn{min-width:30px;height:30px;padding:0 7px;border:1px solid #e2e8f0;border-radius:9px;background:#fff;font-size:13px;color:#475569;transition:all .15s;line-height:1;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.pager-btn:hover:not(:disabled):not(.active){border-color:#2563eb;color:#2563eb;background:#f0f6ff}
+.pager-btn.active{background:linear-gradient(135deg,#60a5fa,#8b5cf6);border-color:transparent;color:#fff;font-weight:700;box-shadow:0 2px 8px rgba(99,102,241,.35)}
+.pager-btn:disabled{opacity:.35;cursor:not-allowed;background:#f8fafc}
+.pager-dots{color:#94a3b8;padding:0 2px;font-size:12px;flex-shrink:0}
+.pager-size{font-size:12.5px;color:#64748b;display:flex;align-items:center;gap:4px;white-space:nowrap;flex-shrink:0}
+.pager-size select{padding:4px 6px;border:1px solid #e2e8f0;border-radius:8px;font-size:12.5px;background:#fff;outline:none;cursor:pointer}
+.pager:empty{display:none}
+@media (max-width: 980px){
+  .pager-info{display:none}
+  .pager-size{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h3>📖 分页器渲染验证页（双击此文件打开，样式已内联，无任何外部依赖）</h3>
+  <p style="color:#64748b;font-size:13px">如果下方分页器是<b>一行</b>且页码是胶囊按钮——说明样式正常；此页与 PaperMind 知识库使用完全相同的内联样式。</p>
+
+  <div class="card">
+    <h3>🔤 术语库（26 条 · 分页 10/页）</h3>
+    <div id="termList"></div>
+    <div id="termPager" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <h3>💬 我的笔记（按论文分组 · 分页 5 组/页）</h3>
+    <div id="noteAgg"></div>
+    <div id="notePager" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<script>
+/* ===== 与 pager.js 一致的渲染逻辑（内联精简版） ===== */
+function pageNums(p, pages){
+  var out = [], s = Math.max(1, p-2), e = Math.min(pages, p+2);
+  if(s > 1){ out.push(1); if(s > 2) out.push('...'); }
+  for(var i=s;i<=e;i++) out.push(i);
+  if(e < pages){ if(e < pages-1) out.push('...'); out.push(pages); }
+  return out;
+}
+function renderPager(opt){
+  var el = opt.el, page = Math.max(1, opt.page), size = opt.pageSize, total = Math.max(0, opt.total);
+  var pages = Math.max(1, Math.ceil(total/size));
+  if(page > pages) page = pages;
+  var html = '<div class="pager">';
+  html += '<span class="pager-info">共 <b>'+total+'</b> 条 · <b>'+page+'/'+pages+'</b> 页</span>';
+  html += '<div class="pager-btns">';
+  html += '<button class="pager-btn"'+(page<=1?' disabled':'')+' data-p="1">«</button>';
+  html += '<button class="pager-btn"'+(page<=1?' disabled':'')+' data-p="'+(page-1)+'">‹</button>';
+  pageNums(page,pages).forEach(function(n){
+    html += n==='...' ? '<span class="pager-dots">…</span>' : '<button class="pager-btn'+(n===page?' active':'')+'" data-p="'+n+'">'+n+'</button>';
+  });
+  html += '<button class="pager-btn"'+(page>=pages?' disabled':'')+' data-p="'+(page+1)+'">›</button>';
+  html += '<button class="pager-btn"'+(page>=pages?' disabled':'')+' data-p="'+pages+'">»</button>';
+  html += '</div>';
+  html += '<label class="pager-size">每页 <select><option value="5">5</option><option value="10" selected>10</option><option value="20">20</option><option value="50">50</option></select> 条</label>';
+  html += '</div>';
+  el.innerHTML = html;
+  el.querySelectorAll('.pager-btn:not([disabled])').forEach(function(b){ b.onclick = function(){ opt.onChange(parseInt(b.dataset.p,10)); }; });
+  el.querySelector('.pager-size select').onchange = function(){ opt.onSizeChange(parseInt(this.value,10)); };
+}
+
+/* ===== 演示数据（26 条术语 + 6 组笔记，模拟知识库） ===== */
+var TERMS = [];
+['Transformer','Self-Attention','Multi-Head','Positional Encoding','ResNet','Residual','Backbone','Fine-tune','Pretrain','Transfer Learning','ViT','Patch Embedding','CLS Token','DETR','Bipartite Matching','NMS','PP-OCR','DB','CRNN','Sequence','CTC','TrOCR','RoBERTa','MASTER','Encoder','Decoder'].forEach(function(en, i){
+  TERMS.push({en:en, zh:'演示译名'+i, from:'出自论文A、论文B'});
+});
+var GROUPS = [];
+for(var g=0; g<6; g++){
+  var ns = [];
+  for(var n=0; n<3; n++) ns.push({text:'演示笔记 '+g+'-'+n, color:'y'});
+  GROUPS.push({title:'论文 '+(g+1)+' 的笔记', ns:ns});
+}
+
+/* 术语分页 */
+var termPage=1, termSize=10;
+function renderTerms(){
+  var total=TERMS.length, pages=Math.max(1,Math.ceil(total/termSize));
+  if(termPage>pages) termPage=pages;
+  var slice=TERMS.slice((termPage-1)*termSize, termPage*termSize);
+  document.getElementById('termList').innerHTML = slice.map(function(t){
+    return '<div class="term-row"><span class="en">'+t.en+'</span><span class="zh">'+t.zh+'</span><span class="from">'+t.from+'</span></div>';
+  }).join('');
+  renderPager({el:document.getElementById('termPager'), page:termPage, pageSize:termSize, total:total,
+    onChange:function(p){termPage=p;renderTerms();}, onSizeChange:function(s){termSize=s;termPage=1;renderTerms();}});
+}
+renderTerms();
+
+/* 笔记分页 */
+var notePage=1, noteSize=5;
+function renderNotes(){
+  var total=GROUPS.length, pages=Math.max(1,Math.ceil(total/noteSize));
+  if(notePage>pages) notePage=pages;
+  var slice=GROUPS.slice((notePage-1)*noteSize, notePage*noteSize);
+  document.getElementById('noteAgg').innerHTML = slice.map(function(g){
+    return '<div class="card" style="margin-bottom:10px"><b>📄 '+g.title+'</b>（'+g.ns.length+' 条笔记）</div>';
+  }).join('');
+  renderPager({el:document.getElementById('notePager'), page:notePage, pageSize:noteSize, total:total,
+    onChange:function(p){notePage=p;renderNotes();}, onSizeChange:function(s){noteSize=s;notePage=1;renderNotes();}});
+}
+renderNotes();
+</script>
+</body>
+</html>

@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaperMind</title>
+<link rel="icon" type="image/png" href="favicon-32.png">
+<link rel="stylesheet" href="style.css?v=2301">
+<style>
+.comm-wrap{display:flex;flex-direction:column;height:calc(100vh - var(--topbar-h));overflow:hidden;width:100%;padding:0 24px;box-sizing:border-box;max-width:none}
+.comm-tabs{display:flex;gap:2px;padding:10px 2px 0;margin:0}
+.comm-tabs button{flex:none;padding:8px 18px;font-size:13.5px;color:var(--text-2);background:rgba(241,244,249,.75);border:1px solid var(--border);border-bottom:none;border-radius:10px 10px 0 0;cursor:pointer;font-weight:500;margin-right:4px}
+.comm-tabs button.active{color:var(--primary);background:#fff;font-weight:600;border-color:var(--primary);border-bottom:2px solid #fff;margin-bottom:-1px}
+.comm-view{flex:1;min-height:0;overflow-y:auto;margin-top:10px}
+.feed-item{border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;background:#fff;transition:.15s}
+.feed-item:hover{box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.feed-head{display:flex;align-items:center;gap:10px}
+.feed-av{width:38px;height:38px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:19px;flex:none}
+.feed-user{flex:1;min-width:0}
+.feed-name{font-weight:700;font-size:14px}
+.feed-meta{color:var(--text-3);font-size:12px;margin-top:1px}
+.feed-paper{display:inline-flex;align-items:center;gap:6px;margin:10px 0 8px;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:12.5px;color:var(--primary);cursor:pointer;max-width:100%}
+.feed-paper:hover{border-color:var(--primary)}
+.feed-text{font-size:13.5px;line-height:1.8;color:var(--text-1)}
+.feed-summary{display:inline-block;margin-top:8px;font-size:12px;background:linear-gradient(135deg,#f5f3ff,#eff6ff);border:1px solid #e0e7ff;border-radius:8px;padding:5px 10px;color:#5b4bb0}
+.feed-acts{display:flex;gap:8px;margin-top:10px;border-top:1px dashed var(--border);padding-top:9px}
+.feed-acts button{flex:none;padding:4px 12px;font-size:12.5px;border-radius:999px;border:1px solid var(--border);background:#fff;cursor:pointer;color:var(--text-2)}
+.feed-acts button.liked{color:var(--danger);border-color:#fecdd3;background:#fff1f2}
+.feed-acts button:hover{border-color:var(--primary);color:var(--primary)}
+.cmt-box{margin-top:8px;border:1px solid var(--border);border-radius:10px;padding:10px;background:#fafbfe}
+.cmt{font-size:12.5px;padding:5px 0;border-bottom:1px dashed #eef2f7;line-height:1.7}
+.cmt b{color:var(--text-2)}
+.cmt-input{display:flex;gap:6px;margin-top:8px}
+.cmt-input input{flex:1;padding:6px 10px;border:1px solid var(--border);border-radius:999px;outline:none;font-size:12.5px}
+.team-card{border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;background:#fff;cursor:pointer;transition:.15s;display:flex;gap:14px;align-items:flex-start}
+.team-card:hover{border-color:var(--primary);box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.team-badge{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;flex:none}
+.team-name{font-weight:700;font-size:14.5px}
+.team-desc{color:var(--text-2);font-size:12.5px;margin-top:3px;line-height:1.6}
+.team-members{display:flex;gap:4px;margin-top:8px;flex-wrap:wrap}
+.team-members .m{width:22px;height:22px;border-radius:50%;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:12px;border:1px solid #fff}
+.share-item{border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:10px;background:#fff;display:flex;gap:12px;align-items:center}
+.share-item .st{flex:1;min-width:0}
+.paper-comm{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:12px}
+.back-link{cursor:pointer;color:var(--primary);font-size:13px;font-weight:600}
+.empty-comm{padding:60px 0;text-align:center;color:var(--text-3)}
+.empty-comm .big{font-size:44px;margin-bottom:10px}
+.vis-badge{font-size:11px;padding:2px 8px;border-radius:999px;margin-left:6px}
+.vis-public{background:#dcfce7;color:#15803d}
+.vis-friends{background:#dbeafe;color:#1d4ed8}
+.vis-private{background:#f1f5f9;color:#64748b}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="logo" href="index.html"><span class="mark">研</span>PaperMind</a>
+  <nav class="nav">
+    <a href="index.html" data-i18n="nav_discover">发现</a>
+    <a href="library.html" data-i18n="nav_library">文献库</a>
+    <a href="graph.html" data-i18n="nav_graph">图谱</a>
+    <a href="vault.html" data-i18n="nav_vault">知识库</a>
+    <a href="community.html" class="active" data-i18n="nav_community">社区交流</a>
+  </nav>
+  <div class="right">
+    <div class="user-menu">
+      <div class="avatar" id="avatarBtn">王</div>
+      <div class="um-drop hidden" id="userDrop">
+        <div class="um-head"><b id="umName">—</b><span id="umEmail"></span></div>
+        <a href="profile.html">👤 个人中心</a>
+        <a href="profile.html#edit">📝 修改资料</a>
+        <div class="um-sep"></div>
+        <a href="javascript:logout()">🚪 退出登录</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="comm-wrap">
+  <div class="comm-tabs">
+    <button class="active" onclick="switchComm('feed')">💬 动态</button>
+    <button onclick="switchComm('teams')">👥 团队 <span id="teamNavCount" style="font-size:11px;color:var(--text-3)"></span></button>
+    <button onclick="switchComm('shares')">📤 分享 <span id="shareNavCount" style="font-size:11px;color:var(--text-3)"></span></button>
+  </div>
+
+  <!-- ============ 动态流 ============ -->
+  <div class="comm-view" id="viewFeed">
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+      <span style="font-weight:700;font-size:15px">💬 社区动态</span>
+      <span style="font-size:12px;color:var(--text-3)">公开笔记与论文总结（私密笔记仅自己可见）</span>
+      <div style="flex:1"></div>
+      <select id="feedFilter" onchange="onFeedFilter(this.value)" title="动态类型筛选"
+              style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:12.5px;outline:none">
+        <option value="all">全部</option>
+        <option value="summary">论文总结</option>
+        <option value="note">笔记</option>
+        <option value="mine">我的</option>
+      </select>
+      <input id="feedQ" placeholder="搜索社区内容…" oninput="renderFeed()"
+             style="padding:7px 12px;border:1px solid var(--border);border-radius:999px;outline:none;width:180px;font-size:12.5px">
+    </div>
+    <div id="feedList"></div>
+    <div id="feedPager" style="margin-top:10px"></div>
+  </div>
+
+  <!-- ============ 团队 ============ -->
+  <div class="comm-view hidden" id="viewTeams">
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">
+      <span style="font-weight:700;font-size:15px">👥 团队广场</span>
+      <span style="font-size:12px;color:var(--text-3)" id="teamCount"></span>
+      <div style="flex:1"></div>
+      <button class="btn btn-primary btn-sm" onclick="openCreateTeam()">➕ 创建团队</button>
+    </div>
+    <div id="teamDetail" style="display:none">
+      <div class="back-link" onclick="backToTeams()">← 返回团队列表</div>
+      <div id="teamDetailBody" style="margin-top:10px"></div>
+    </div>
+    <div id="teamsList"></div>
+    <div id="teamsPager" style="margin-top:10px"></div>
+  </div>
+
+  <!-- ============ 分享 ============ -->
+  <div class="comm-view hidden" id="viewShares">
+    <div style="font-weight:700;font-size:15px;margin-bottom:4px">📤 分享管理</div>
+    <div style="font-size:12px;color:var(--text-3);margin-bottom:12px">文献库论文可分享给个人/好友/团队；分享给你的论文可一键收入文献库</div>
+    <div style="font-weight:600;font-size:13.5px;margin:14px 0 8px">📥 分享给我的 <span id="shareInCount" style="font-size:12px;color:var(--text-3)"></span></div>
+    <div id="sharesIn"></div>
+    <div id="shareInPager" style="margin-top:8px"></div>
+    <div style="font-weight:600;font-size:13.5px;margin:20px 0 8px">📤 我分享的 <span id="shareOutCount" style="font-size:12px;color:var(--text-3)"></span></div>
+    <div id="sharesOut"></div>
+    <div id="shareOutPager" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<div class="modal-mask" id="createTeamModal">
+  <div class="modal" style="max-width:480px">
+    <span class="close" onclick="closeCreateTeam()">✕</span>
+    <h3>➕ 创建团队</h3>
+    <div class="field"><label>团队名称 *</label><input id="ctName" placeholder="如：文档智能攻关组" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;outline:none"></div>
+    <div class="field" style="margin-top:10px"><label>团队简介</label><textarea id="ctDesc" rows="3" placeholder="团队研究方向 / 共读计划…" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;outline:none;resize:vertical"></textarea></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+      <button class="btn" onclick="closeCreateTeam()">取消</button>
+      <button class="btn btn-primary" onclick="createTeam()">创建</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-mask" id="commentsModal">
+  <div class="modal" style="max-width:560px">
+    <span class="close" onclick="closeComments()">✕</span>
+    <h3>💬 评论</h3>
+    <div id="cmtPaper" style="font-size:12.5px;color:var(--text-3);margin-bottom:8px"></div>
+    <div id="cmtList" style="max-height:320px;overflow-y:auto"></div>
+    <div class="cmt-input" style="margin-top:10px">
+      <input id="cmtInput" placeholder="写下你的评论…" onkeydown="if(event.key==='Enter')addComment()">
+      <button class="btn btn-primary btn-sm" onclick="addComment()">发送</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="data.js?v=2301"></script>
+<script src="user-menu.js?v=2301"></script>
+<script src="pager.js?v=2301"></script>
+<script>
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2400)}
+var my = PM.getUser();
+/* ================= 数据初始化（localStorage 持久化） ================= */
+function lsGet(k, def){ try{ var v=JSON.parse(localStorage.getItem(k)); return v==null?def:v }catch(e){ return def } }
+function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)) }catch(e){} }
+var teams = lsGet('pm_teams', PM.demoTeams);
+var likes = lsGet('pm_likes', {});          // {noteId: 1}
+var feedQ = '', feedF = 'all';
+var cmtNote = null;
+/* 分页状态 */
+var feedPage = 1, feedSize = 5;
+var teamPage = 1, teamSize = 4;
+var shareInPage = 1, shareInSize = 5;
+var shareOutPage = 1, shareOutSize = 5;
+function initCommunity(){
+  /* 团队数据首次预置（含演示申请） */
+  if(!localStorage.getItem('pm_teams')){
+    teams = PM.demoTeams.map(function(t){ return JSON.parse(JSON.stringify(t)) });
+    teams[0].applications = [{name:'张德勋', ts:Date.now()-86400000}];   /* 预置一条申请 */
+    lsSet('pm_teams', teams);
+  }
+  renderTeams();
+  renderShares();
+  renderFeed();
+  document.getElementById('teamNavCount').textContent = '('+teams.length+')';
+}
+/* ================= Tab 切换 ================= */
+function switchComm(v){
+  ['feed','teams','shares'].forEach(function(x){
+    document.getElementById('view'+x.charAt(0).toUpperCase()+x.slice(1)).classList.toggle('hidden', x!==v);
+  });
+  document.querySelectorAll('.comm-tabs button').forEach(function(b){
+    b.classList.toggle('active', b.textContent.indexOf(v==='feed'?'动态':v==='teams'?'团队':'分享')>=0);
+  });
+}
+/* ================= 动态流 ================= */
+function allNotes(){
+  var list = PM.demoNotes ? JSON.parse(JSON.stringify(PM.demoNotes)) : [];
+  /* 我的公开笔记（marks 中 visibility=public，或旧数据无 visibility 视为公开） */
+  PM.papers.forEach(function(p){
+    try{
+      var marks = JSON.parse(localStorage.getItem('pm_marks_'+p.id)||'[]');
+      marks.forEach(function(m){
+        if(m.visibility!=='private' && m.visibility!=='friends'){   /* public 或旧数据 */
+          list.push({id:'my_'+p.id+'_'+m.id, uid:'me', name: my.name, avatar: my.avatar||'🦉', role: my.role||'',
+            paperId: p.id, kind:'note', text: (m.text||'')+(m.note? ' —— '+m.note : ''), summary: m.note||'',
+            visibility:'public', ts: m.ts||Date.now(), likes: 0, comments: []});
+        }
+      });
+    }catch(e){}
+  });
+  list.sort(function(a,b){ return b.ts-a.ts });
+  return list;
+}
+function onFeedFilter(v){
+  feedF = v;
+  feedPage = 1;
+  renderFeed();
+}
+function renderFeed(){
+  var q = document.getElementById('feedQ').value.trim().toLowerCase();
+  var list = allNotes().filter(function(n){
+    if(feedF==='summary' && n.kind!=='summary') return false;
+    if(feedF==='note' && n.kind!=='note') return false;
+    if(feedF==='mine' && n.uid!=='me') return false;
+    if(q && (n.text+' '+n.summary+' '+n.name).toLowerCase().indexOf(q)<0) return false;
+    return true;
+  });
+  var total = list.length, pages = Math.max(1, Math.ceil(total/feedSize));
+  if(feedPage > pages) feedPage = pages;
+  var slice = list.slice((feedPage-1)*feedSize, feedPage*feedSize);
+  document.getElementById('feedList').innerHTML = slice.length ? slice.map(function(n){
+    var p = PM.papers[n.paperId];
+    if(!p) return '';
+    var liked = likes[n.id];
+    return '<div class="feed-item">'+
+      '<div class="feed-head">'+
+        '<div class="feed-av">'+n.avatar+'</div>'+
+        '<div class="feed-user">'+
+          '<div class="feed-name">'+n.name+(n.uid==='me'?' <span style="font-size:11px;font-weight:400;color:var(--primary)">(我)</span>':'')+'</div>'+
+          '<div class="feed-meta">'+((n.role||'')? n.role+' · ':'')+timeAgo(n.ts)+'</div>'+
+        '</div>'+
+        '<span class="badge '+(n.kind==='summary'?'badge-purple':'badge-blue')+'" style="font-size:11px">'+(n.kind==='summary'?'论文总结':'笔记')+'</span>'+
+      '</div>'+
+      '<div class="feed-paper" onclick="openPaperCommunity('+n.paperId+')">📄 '+p.title.slice(0,60)+(p.title.length>60?'…':'')+'</div>'+
+      '<div class="feed-text">'+esc(n.text)+'</div>'+
+      (n.summary? '<div class="feed-summary">✨ '+esc(n.summary)+'</div>':'')+
+      '<div class="feed-acts">'+
+        '<button class="'+(liked?'liked':'')+'" onclick="toggleLike(\''+n.id+'\')">'+(liked?'❤️':'🤍')+' '+(n.likes+(liked?1:0))+'</button>'+
+        '<button onclick="openComments(\''+n.id+'\')">💬 '+(n.comments?n.comments.length:0)+'</button>'+
+        '<button onclick="openPaperCommunity('+n.paperId+')">📄 论文社区</button>'+
+      '</div>'+
+    '</div>';
+  }).join('') : '<div class="empty-comm"><div class="big">💬</div>暂无动态，先去写一篇公开笔记吧</div>';
+  renderPager({el: document.getElementById('feedPager'), page: feedPage, pageSize: feedSize, total: total,
+    onChange: function(p){ feedPage=p; renderFeed(); },
+    onSizeChange: function(s){ feedSize=s; feedPage=1; renderFeed(); }});
+}
+function timeAgo(ts){
+  var s = Math.floor((Date.now()-ts)/1000);
+  if(s<60) return '刚刚';
+  if(s<3600) return Math.floor(s/60)+' 分钟前';
+  if(s<86400) return Math.floor(s/3600)+' 小时前';
+  return Math.floor(s/86400)+' 天前';
+}
+function toggleLike(id){
+  if(likes[id]){ delete likes[id] } else { likes[id]=1 }
+  lsSet('pm_likes', likes);
+  renderFeed();
+}
+function openComments(id){
+  cmtNote = id;
+  var all = allNotes();
+  var n = all.find(function(x){ return x.id===id });
+  if(!n) return;
+  document.getElementById('cmtPaper').textContent = n.name+' 的'+(n.kind==='summary'?'论文总结':'笔记')+' · '+PM.papers[n.paperId].title.slice(0,40);
+  renderComments(n);
+  document.getElementById('commentsModal').style.display='flex';
+  document.getElementById('cmtInput').value='';
+}
+function renderComments(n){
+  document.getElementById('cmtList').innerHTML = (n.comments||[]).map(function(c){
+    return '<div class="cmt"><b>'+c.name+'</b> <span style="color:var(--text-3);font-size:11px">'+timeAgo(c.ts)+'</span><div>'+esc(c.text)+'</div></div>';
+  }).join('') || '<div style="color:var(--text-3);font-size:12.5px;padding:10px 0;text-align:center">暂无评论，来抢沙发</div>';
+}
+function addComment(){
+  var v = document.getElementById('cmtInput').value.trim();
+  if(!v || !cmtNote) return;
+  var all = allNotes();
+  var n = all.find(function(x){ return x.id===cmtNote });
+  if(!n) return;
+  if(!n.comments) n.comments = [];
+  n.comments.push({name: my.name, text: v, ts: Date.now()});
+  /* demo 动态持久化（我的公开笔记评论只存会话） */
+  if(cmtNote.indexOf('dn')===0) lsSet('pm_demo_comments_'+cmtNote, n.comments);
+  renderComments(n);
+  document.getElementById('cmtInput').value='';
+  toast('💬 评论成功');
+}
+function closeComments(){ document.getElementById('commentsModal').style.display='none' }
+/* ================= 论文社区聚合 ================= */
+function openPaperCommunity(pid){
+  var p = PM.papers[pid];
+  if(!p) return;
+  var notes = allNotes().filter(function(n){ return n.paperId===pid && n.uid!=='me' });
+  /* 我的可见笔记（公开/仅好友/私密 都显示，但标注） */
+  var mine = [];
+  try{
+    var marks = JSON.parse(localStorage.getItem('pm_marks_'+pid)||'[]');
+    marks.forEach(function(m){
+      mine.push({id:'my_'+pid+'_'+m.id, name: my.name, avatar: my.avatar||'🦉', kind:'note',
+        text:(m.text||'')+(m.note?' —— '+m.note:''), summary:m.note||'',
+        visibility: m.visibility||'public', ts: m.ts||Date.now()});
+    });
+  }catch(e){}
+  var html = '<div class="back-link" onclick="backToFeed()">← 返回动态</div>'+
+    '<div class="paper-comm" style="margin-top:10px">'+
+      '<div style="font-size:15px;font-weight:700">'+p.title+'</div>'+
+      '<div style="color:var(--text-2);font-size:12.5px;margin-top:3px">'+p.authors+' · '+p.venue+'</div>'+
+      '<div style="display:flex;gap:8px;margin-top:10px">'+
+        '<a class="btn btn-sm btn-primary" href="library.html?tab=reader&p='+pid+'">📖 去精读</a>'+
+        '<a class="btn btn-sm" href="library.html?p='+pid+'">📄 详情</a>'+
+      '</div>'+
+    '</div>'+
+    '<div style="font-weight:600;font-size:13.5px;margin:14px 0 8px">💬 大家在这篇论文下的公开讨论</div>';
+  var all = notes.concat(mine.map(function(m){ return {id:m.id,name:m.name,avatar:m.avatar,kind:'note',text:m.text,summary:m.summary,visibility:m.visibility,ts:m.ts,comments:[],likes:0} }));
+  all.sort(function(a,b){ return b.ts-a.ts });
+  html += all.map(function(n){
+    var vis = n.visibility;
+    var visBadge = vis==='private' ? '<span class="vis-badge vis-private">🔒 仅自己</span>' : vis==='friends' ? '<span class="vis-badge vis-friends">👥 仅好友</span>' : '';
+    return '<div class="feed-item">'+
+      '<div class="feed-head"><div class="feed-av">'+n.avatar+'</div>'+
+        '<div class="feed-user"><div class="feed-name">'+n.name+(n.uid==='me'?' (我)':'')+'</div>'+
+        '<div class="feed-meta">'+timeAgo(n.ts)+'</div></div>'+
+        '<span class="badge badge-blue" style="font-size:11px">笔记</span>'+visBadge+
+      '</div>'+
+      '<div class="feed-text">'+esc(n.text)+'</div>'+
+      (n.summary? '<div class="feed-summary">✨ '+esc(n.summary)+'</div>':'')+
+    '</div>';
+  }).join('') || '<div class="empty-comm"><div class="big">📄</div>还没有人公开讨论这篇论文</div>';
+  document.getElementById('viewFeed').innerHTML = '<div style="max-width:860px;margin:0 auto">'+html+'</div>';
+}
+function backToFeed(){
+  document.getElementById('viewFeed').innerHTML =
+    '<div style="display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap">'+
+      '<span style="font-weight:700;font-size:15px">💬 社区动态</span>'+
+      '<span style="font-size:12px;color:var(--text-3)">公开笔记与论文总结（私密笔记仅自己可见）</span><div style="flex:1"></div>'+
+      '<select id="feedFilter" onchange="onFeedFilter(this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:12.5px;outline:none">'+
+        '<option value="all"'+(feedF==='all'?' selected':'')+'>全部</option>'+
+        '<option value="summary"'+(feedF==='summary'?' selected':'')+'>论文总结</option>'+
+        '<option value="note"'+(feedF==='note'?' selected':'')+'>笔记</option>'+
+        '<option value="mine"'+(feedF==='mine'?' selected':'')+'>我的</option></select>'+
+      '<input id="feedQ" placeholder="搜索社区内容…" oninput="renderFeed()" style="padding:7px 12px;border:1px solid var(--border);border-radius:999px;outline:none;width:180px;font-size:12.5px"></div>'+
+    '<div id="feedList"></div>'+
+    '<div id="feedPager" style="margin-top:10px"></div>';
+  renderFeed();
+}
+/* ================= 团队 ================= */
+function renderTeams(){
+  var myName = my.name;
+  var joined = teams.filter(function(t){ return t.members.indexOf(myName)>=0 });
+  var html = '<div style="font-size:12.5px;color:var(--text-2);margin-bottom:10px">已加入 <b>'+joined.length+'</b> 个团队：'+joined.map(function(t){return t.name}).join('、')+'（个人中心可查看，可加入多个）</div>';
+  var total = teams.length, pages = Math.max(1, Math.ceil(total/teamSize));
+  if(teamPage > pages) teamPage = pages;
+  var slice = teams.slice((teamPage-1)*teamSize, teamPage*teamSize);
+  slice.forEach(function(t){
+    var inTeam = t.members.indexOf(myName)>=0;
+    var isOwner = t.owner===myName;
+    html += '<div class="team-card" onclick="openTeamDetail(\''+t.id+'\')">'+
+      '<div class="team-badge">👥</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'+
+          '<span class="team-name">'+t.name+'</span>'+
+          (isOwner?'<span class="badge badge-purple" style="font-size:11px">队长</span>':'')+
+          (inTeam?'<span class="badge badge-green" style="font-size:11px">✓ 已加入</span>':'')+
+          '<span style="font-size:12px;color:var(--text-3)">'+t.members.length+' 人 · 创建者 '+t.owner+'</span>'+
+        '</div>'+
+        '<div class="team-desc">'+t.desc+'</div>'+
+        '<div class="team-members">'+t.members.map(function(m){
+          var u = (PM.demoUsers||[]).find(function(x){ return x.name===m });
+          return '<div class="m" title="'+m+'">'+(u?u.avatar:'👤')+'</div>';
+        }).join('')+'</div>'+
+      '</div>'+
+      '<div onclick="event.stopPropagation()">'+
+        (inTeam ? (isOwner?'':'<button class="btn btn-sm" onclick="quitTeam(\''+t.id+'\')">退出</button>')
+                : '<button class="btn btn-sm btn-primary" onclick="applyTeam(\''+t.id+'\')">📨 申请加入</button>')+
+      '</div>'+
+    '</div>';
+  });
+  document.getElementById('teamsList').innerHTML = html;
+  document.getElementById('teamCount').textContent = '共 '+total+' 个团队';
+  renderPager({el: document.getElementById('teamsPager'), page: teamPage, pageSize: teamSize, total: total,
+    onChange: function(p){ teamPage=p; renderTeams(); },
+    onSizeChange: function(s){ teamSize=s; teamPage=1; renderTeams(); }});
+}
+function openCreateTeam(){ document.getElementById('createTeamModal').style.display='flex' }
+function closeCreateTeam(){ document.getElementById('createTeamModal').style.display='none' }
+function createTeam(){
+  var name = document.getElementById('ctName').value.trim();
+  if(!name){ toast('请填写团队名称'); return }
+  var t = {id:'t'+Date.now(), name:name, desc: document.getElementById('ctDesc').value.trim()||'暂无简介',
+    owner: my.name, members:[my.name], applications:[]};
+  teams.push(t);
+  lsSet('pm_teams', teams);
+  closeCreateTeam();
+  renderTeams();
+  toast('✅ 团队「'+name+'」创建成功，你是队长');
+}
+function applyTeam(tid){
+  var t = teams.find(function(x){ return x.id===tid });
+  if(!t) return;
+  if(t.applications.some(function(a){ return a.name===my.name })){ toast('已提交申请，等待队长审批'); return }
+  t.applications.push({name:my.name, ts:Date.now()});
+  lsSet('pm_teams', teams);
+  renderTeams();
+  toast('📨 已申请加入「'+t.name+'」，等待队长审批');
+}
+function quitTeam(tid){
+  var t = teams.find(function(x){ return x.id===tid });
+  if(!t) return;
+  if(!confirm('退出团队「'+t.name+'」？')) return;
+  t.members = t.members.filter(function(m){ return m!==my.name });
+  lsSet('pm_teams', teams);
+  renderTeams();
+  toast('已退出团队');
+}
+function openTeamDetail(tid){
+  var t = teams.find(function(x){ return x.id===tid });
+  if(!t) return;
+  var myName = my.name;
+  var inTeam = t.members.indexOf(myName)>=0;
+  var isOwner = t.owner===myName;
+  var html = '<div class="paper-comm">'+
+    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+      '<span style="font-size:17px;font-weight:700">'+t.name+'</span>'+
+      (isOwner?'<span class="badge badge-purple">队长</span>':'')+
+      (inTeam?'<span class="badge badge-green">✓ 已加入</span>':'')+
+    '</div>'+
+    '<div style="color:var(--text-2);font-size:13px;margin-top:6px;line-height:1.7">'+t.desc+'</div>'+
+    '<div style="color:var(--text-3);font-size:12.5px;margin-top:4px">创建者 '+t.owner+' · '+t.members.length+' 人</div>'+
+    '<div style="display:flex;gap:8px;margin-top:12px">'+
+      (inTeam && !isOwner ? '<button class="btn btn-sm" onclick="quitTeam(\''+t.id+'\')">退出团队</button>':'')+
+      (!inTeam ? '<button class="btn btn-sm btn-primary" onclick="applyTeam(\''+t.id+'\')">📨 申请加入</button>':'')+
+      '<button class="btn btn-sm" onclick="shareToTeam(\''+t.id+'\')">📤 分享论文到团队</button>'+
+    '</div>'+
+  '</div>';
+  html += '<div style="font-weight:600;font-size:13.5px;margin:12px 0 8px">👥 成员（'+t.members.length+'）</div>'+
+    '<div class="paper-comm" style="padding:10px 14px">'+t.members.map(function(m){
+      var u = (PM.demoUsers||[]).find(function(x){ return x.name===m });
+      return '<div style="display:flex;align-items:center;gap:10px;padding:7px 2px;border-bottom:1px dashed #f1f4f9">'+
+        '<div class="feed-av" style="width:30px;height:30px;font-size:15px">'+(u?u.avatar:'👤')+'</div>'+
+        '<b style="font-size:13px">'+m+'</b>'+
+        (t.owner===m?'<span class="badge badge-purple" style="font-size:10px">队长</span>':'')+
+        (m===myName?'<span style="font-size:11px;color:var(--text-3)">(我)</span>':'')+
+        '<div style="flex:1"></div>'+
+        (isOwner && m!==myName ? '<button class="btn btn-sm" style="color:var(--danger)" onclick="removeMember(\''+t.id+'\',\''+m+'\')">移除</button>':'')+
+      '</div>';
+    }).join('')+'</div>';
+  if(isOwner){
+    html += '<div style="font-weight:600;font-size:13.5px;margin:12px 0 8px">📨 加入申请（'+t.applications.length+'）</div>'+
+      (t.applications.length
+        ? '<div class="paper-comm" style="padding:10px 14px">'+t.applications.map(function(a){
+            return '<div style="display:flex;align-items:center;gap:10px;padding:7px 2px;border-bottom:1px dashed #f1f4f9">'+
+              '<b style="font-size:13px">'+a.name+'</b><span style="font-size:11px;color:var(--text-3)">'+timeAgo(a.ts)+'</span>'+
+              '<div style="flex:1"></div>'+
+              '<button class="btn btn-sm btn-primary" onclick="approveApply(\''+t.id+'\',\''+a.name+'\')">通过</button>'+
+              '<button class="btn btn-sm" onclick="rejectApply(\''+t.id+'\',\''+a.name+'\')">拒绝</button>'+
+            '</div>';
+          }).join('')+'</div>'
+        : '<div style="color:var(--text-3);font-size:12.5px">暂无申请</div>');
+  }
+  document.getElementById('teamDetailBody').innerHTML = html;
+  document.getElementById('teamDetail').style.display='block';
+  document.getElementById('teamsList').style.display='none';
+}
+function backToTeams(){
+  document.getElementById('teamDetail').style.display='none';
+  document.getElementById('teamsList').style.display='block';
+  renderTeams();
+}
+function approveApply(tid, name){
+  var t = teams.find(function(x){ return x.id===tid });
+  if(!t) return;
+  t.members.push(name);
+  t.applications = t.applications.filter(function(a){ return a.name!==name });
+  lsSet('pm_teams', teams);
+  openTeamDetail(tid);
+  toast('✅ 已通过「'+name+'」的加入申请');
+}
+function rejectApply(tid, name){
+  var t = teams.find(function(x){ return x.id===tid });
+  if(!t) return;
+  t.applications = t.applications.filter(function(a){ return a.name!==name });
+  lsSet('pm_teams', teams);
+  openTeamDetail(tid);
+  toast('已拒绝「'+name+'」的申请');
+}
+function removeMember(tid, name){
+  var t = teams.find(function(x){ return x.id===tid });
+  if(!t) return;
+  if(!confirm('将 '+name+' 移出团队？')) return;
+  t.members = t.members.filter(function(m){ return m!==name });
+  lsSet('pm_teams', teams);
+  openTeamDetail(tid);
+  toast('已移除 '+name);
+}
+function shareToTeam(tid){
+  var t = teams.find(function(x){ return x.id===tid });
+  var s = sharesOut;
+  var n = s.filter(function(x){ return x.targetType==='team' && x.targetId===tid }).length;
+  toast('📤 从文献库论文「📤 分享」选择团队「'+t.name+'」即可分享（当前已分享 '+n+' 篇）');
+}
+/* ================= 分享 ================= */
+var sharesIn = lsGet('pm_shares_in', [
+  {id:'si1', paperId:2, from:'张德勋', ts:Date.now()-172800000, msg:'这篇 ViT 我们组下周组会要讲，一起看看？'},
+  {id:'si2', paperId:4, from:'陈明', ts:Date.now()-86400000, msg:'PP-OCR 轻量版，做端侧 OCR 可以参考'},
+]);
+var sharesOut = lsGet('pm_shares_out', []);
+function renderShares(){
+  var inTotal = sharesIn.length, inPages = Math.max(1, Math.ceil(inTotal/shareInSize));
+  if(shareInPage > inPages) shareInPage = inPages;
+  var inSlice = sharesIn.slice((shareInPage-1)*shareInSize, shareInPage*shareInSize);
+  document.getElementById('sharesIn').innerHTML = inSlice.length ? inSlice.map(function(s){
+    var p = PM.papers[s.paperId];
+    if(!p) return '';
+    return '<div class="share-item">'+
+      '<div style="font-size:24px">📄</div>'+
+      '<div class="st"><div style="font-weight:600;font-size:13.5px">'+p.title.slice(0,55)+(p.title.length>55?'…':'')+'</div>'+
+        '<div style="color:var(--text-3);font-size:12px;margin-top:3px">来自 <b>'+s.from+'</b> · '+timeAgo(s.ts)+' · '+(s.msg||'')+'</div></div>'+
+      '<button class="btn btn-sm btn-primary" onclick="acceptShare(\''+s.id+'\')">📥 收下</button>'+
+      '<button class="btn btn-sm" onclick="ignoreShare(\''+s.id+'\')">忽略</button>'+
+    '</div>';
+  }).join('') : '<div class="empty-comm"><div class="big">📥</div>暂无分享给你的论文</div>';
+  document.getElementById('shareInCount').textContent = '('+inTotal+')';
+  var outTotal = sharesOut.length, outPages = Math.max(1, Math.ceil(outTotal/shareOutSize));
+  if(shareOutPage > outPages) shareOutPage = outPages;
+  var outSlice = sharesOut.slice((shareOutPage-1)*shareOutSize, shareOutPage*shareOutSize);
+  document.getElementById('sharesOut').innerHTML = outSlice.length ? outSlice.map(function(s){
+    var p = PM.papers[s.paperId];
+    if(!p) return '';
+    return '<div class="share-item" style="opacity:.85">'+
+      '<div style="font-size:24px">📤</div>'+
+      '<div class="st"><div style="font-weight:600;font-size:13.5px">'+p.title.slice(0,55)+(p.title.length>55?'…':'')+'</div>'+
+        '<div style="color:var(--text-3);font-size:12px;margin-top:3px">分享给 <b>'+(s.targetType==='team'?'团队 · ':('好友 · '))+s.targetName+'</b> · '+timeAgo(s.ts)+'</div></div>'+
+      '<button class="btn btn-sm" style="color:var(--danger)" onclick="revokeShare(\''+s.id+'\')">撤销</button>'+
+    '</div>';
+  }).join('') : '<div class="empty-comm"><div class="big">📤</div>尚未分享过论文（文献库论文点「📤 分享」）</div>';
+  document.getElementById('shareOutCount').textContent = '('+outTotal+')';
+  document.getElementById('shareNavCount').textContent = '('+(inTotal+outTotal)+')';
+  renderPager({el: document.getElementById('shareInPager'), page: shareInPage, pageSize: shareInSize, total: inTotal,
+    onChange: function(p){ shareInPage=p; renderShares(); },
+    onSizeChange: function(s){ shareInSize=s; shareInPage=1; renderShares(); }});
+  renderPager({el: document.getElementById('shareOutPager'), page: shareOutPage, pageSize: shareOutSize, total: outTotal,
+    onChange: function(p){ shareOutPage=p; renderShares(); },
+    onSizeChange: function(s){ shareOutSize=s; shareOutPage=1; renderShares(); }});
+}
+function acceptShare(sid){
+  var s = sharesIn.find(function(x){ return x.id===sid });
+  if(!s) return;
+  if(PM.papers[s.paperId] && !PM.papers[s.paperId]._trashed){
+    PM.papers[s.paperId].starred = true;   /* 收下 = 标记收藏（模拟入库） */
+    toast('📥 已收下《'+PM.papers[s.paperId].title.slice(0,30)+'…》，已标记收藏');
+  } else {
+    toast('📥 已收下（原型演示：正式版写入我的文献库）');
+  }
+  sharesIn = sharesIn.filter(function(x){ return x.id!==sid });
+  lsSet('pm_shares_in', sharesIn);
+  renderShares();
+}
+function ignoreShare(sid){
+  sharesIn = sharesIn.filter(function(x){ return x.id!==sid });
+  lsSet('pm_shares_in', sharesIn);
+  renderShares();
+  toast('已忽略');
+}
+function revokeShare(sid){
+  if(!confirm('撤销这条分享？')) return;
+  sharesOut = sharesOut.filter(function(x){ return x.id!==sid });
+  lsSet('pm_shares_out', sharesOut);
+  renderShares();
+  toast('已撤销分享');
+}
+/* 供 library.html 调用：记录分享 */
+window.addShareOut = function(paperId, targetType, targetName, targetId){
+  sharesOut.unshift({id:'so'+Date.now(), paperId:paperId, targetType:targetType, targetName:targetName, targetId:targetId, ts:Date.now()});
+  lsSet('pm_shares_out', sharesOut);
+};
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') }
+initCommunity();
+</script>
+</body>
+</html>

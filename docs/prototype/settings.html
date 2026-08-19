@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaperMind</title>
+<link rel="icon" type="image/png" href="favicon-32.png">
+<link rel="stylesheet" href="style.css?v=2301">
+<style>
+.set-block{border:1px solid var(--border);border-radius:12px;background:#fff;padding:20px 22px;margin-bottom:16px;box-shadow:var(--shadow)}
+.set-block h3{font-size:16px;margin-bottom:4px}
+.set-block .tip{font-size:12.5px;color:var(--text-3);margin-bottom:14px}
+.mode-row{display:flex;gap:18px;margin-bottom:14px;flex-wrap:wrap}
+.mode-opt{display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:#fafbfe}
+.mode-opt.on{border-color:var(--primary);background:var(--primary-light);color:var(--primary);font-weight:600}
+.mode-opt input{accent-color:var(--primary)}
+.eng-fields{display:none;background:#f8fafc;border-radius:10px;padding:14px 16px;margin-bottom:12px}
+.eng-fields.show{display:block}
+.eng-fields .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.eng-fields .row3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}
+.status-badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;border-radius:999px;padding:2px 10px;margin-left:8px}
+.st-ok{background:#ecfdf5;color:#059669}
+.st-err{background:#fef2f2;color:#dc2626}
+.st-idle{background:#f3f4f6;color:var(--text-2)}
+.provider-pick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.provider-pick .chip{font-size:12px;padding:4px 10px;border-radius:999px;background:#fff;border:1px solid var(--border);cursor:pointer;color:var(--text-2)}
+.provider-pick .chip.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.cur-engine{font-size:12.5px;color:var(--text-2);background:#eff6ff;border:1px solid #dbeafe;border-radius:8px;padding:8px 12px;margin-top:10px}
+.cur-engine b{color:var(--primary)}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="logo" href="index.html"><span class="mark">研</span>PaperMind</a>
+  <nav class="nav">
+    <a href="index.html" data-i18n="nav_discover">发现</a>
+    <a href="library.html" data-i18n="nav_library">文献库</a>
+    <a href="graph.html" data-i18n="nav_graph">图谱</a>
+    <a href="vault.html" data-i18n="nav_vault">知识库</a>
+    <a href="community.html" data-i18n="nav_community">社区交流</a>
+    
+  </nav>
+  <div class="right">
+    
+    <div class="user-menu">
+      <div class="avatar" id="avatarBtn">王</div>
+      <div class="um-drop hidden" id="userDrop">
+        <div class="um-head"><b id="umName">—</b><span id="umEmail"></span></div>
+        <a href="profile.html">👤 个人中心</a>
+        <a href="profile.html#edit">📝 修改资料</a>
+        
+        <div class="um-sep"></div>
+        <a href="javascript:logout()">🚪 退出登录</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container" style="max-width:860px">
+
+  <div class="section-title" style="margin-top:8px">⚙ 设置中心
+    <span class="more" style="color:var(--text-3);font-size:13px">配置翻译 / OCR 识别引擎 · 未配置时默认调用内置引擎 · 设置仅对当前账号生效</span>
+  </div>
+
+  <!-- ============ 翻译引擎 ============ -->
+  <div class="set-block">
+    <h3>🈶 翻译引擎</h3>
+    <div class="tip">用于阅读器的划词翻译与全文翻译。选择"自定义接口"后可接入任意兼容服务，未配置时默认使用内置引擎。</div>
+
+    <div class="mode-row">
+      <label class="mode-opt on" id="tm-builtin"><input type="radio" name="tmode" value="builtin" onchange="onTMode('builtin')"> 内置翻译引擎（默认）</label>
+      <label class="mode-opt" id="tm-custom"><input type="radio" name="tmode" value="custom" onchange="onTMode('custom')"> 自定义接口</label>
+    </div>
+
+    <div class="eng-fields" id="tf-custom">
+      <div class="provider-pick" id="tProviders"></div>
+      <div class="field"><label>接口地址（Base URL）*</label><input id="tUrl" placeholder="https://api.deepseek.com/v1"></div>
+      <div class="row3">
+        <div class="field"><label>API Key *</label><input id="tKey" type="password" placeholder="sk-…"></div>
+        <div class="field"><label>模型名 *</label><input id="tModel" placeholder="deepseek-chat"></div>
+        <div class="field"><label>超时（秒）</label><input id="tTimeout" value="30" style="text-align:center"></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="btn" onclick="testEngine('t')">🔌 测试连接</button>
+        <span class="status-badge st-idle" id="tStatus">未测试</span>
+      </div>
+    </div>
+
+    <div class="cur-engine" id="tCur">当前生效：<b>内置翻译引擎（默认）</b></div>
+  </div>
+
+  <!-- ============ OCR 引擎 ============ -->
+  <div class="set-block">
+    <h3>🔍 OCR 识别引擎</h3>
+    <div class="tip">用于扫描版 PDF 导入时的文字识别。可接入自建 PaddleOCR 服务或第三方 OCR 接口，未配置时默认使用平台内置 OCR。</div>
+
+    <div class="mode-row">
+      <label class="mode-opt on" id="om-builtin"><input type="radio" name="omode" value="builtin" onchange="onOMode('builtin')"> 内置 OCR（PaddleOCR）</label>
+      <label class="mode-opt" id="om-custom"><input type="radio" name="omode" value="custom" onchange="onOMode('custom')"> 自定义接口</label>
+    </div>
+
+    <div class="eng-fields" id="of-custom">
+      <div class="provider-pick" id="oProviders"></div>
+      <div class="field"><label>接口地址 *</label><input id="oUrl" placeholder="http://10.1.7.68:8088/ocr"></div>
+      <div class="row">
+        <div class="field"><label>API Key（可选）</label><input id="oKey" type="password" placeholder="无鉴权可留空"></div>
+        <div class="field"><label>模型 / 版本</label><input id="oModel" placeholder="PP-OCRv5"></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="btn" onclick="testEngine('o')">🔌 测试连接</button>
+        <span class="status-badge st-idle" id="oStatus">未测试</span>
+      </div>
+    </div>
+
+    <div class="cur-engine" id="oCur">当前生效：<b>内置 OCR（PaddleOCR）</b></div>
+  </div>
+
+  <!-- 保存 -->
+  <div class="card" style="padding:16px 20px;display:flex;align-items:center;gap:12px">
+    <button class="btn btn-primary" onclick="saveSettings()">💾 保存设置</button>
+    <button class="btn" onclick="resetSettings()">↩ 恢复默认</button>
+    <span style="color:var(--text-3);font-size:12.5px">保存后立即生效：阅读器翻译、扫描件 OCR 均按此配置调用</span>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="data.js?v=2301"></script>
+<script src="user-menu.js?v=2301"></script>
+<script>
+var LS_KEY = 'pm_settings';
+var settings;   // {translate:{mode,provider,url,key,model}, ocr:{mode,provider,url,key,model}}
+var tStatus = null, oStatus = null;
+
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2400)}
+
+/* ============ 加载/保存 ============ */
+function loadSettings(){
+  var def = JSON.parse(JSON.stringify(PM.engineDefaults));
+  try{
+    var saved = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+    settings = {
+      translate: Object.assign({}, def.translate, saved.translate||{}),
+      ocr:      Object.assign({}, def.ocr,      saved.ocr||{})
+    };
+  }catch(e){ settings = def }
+}
+function saveSettings(){
+  var okT = validate('t'), okO = validate('o');
+  if(!okT || !okO){ return }
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(settings)); }catch(e){}
+  toast('✅ 设置已保存，立即生效');
+  renderCur();
+}
+function resetSettings(){
+  if(!confirm('恢复默认引擎设置？自定义接口配置将被清除。')) return;
+  settings = JSON.parse(JSON.stringify(PM.engineDefaults));
+  localStorage.removeItem(LS_KEY);
+  renderAll();
+  toast('已恢复默认（内置引擎）');
+}
+
+/* ============ 渲染 ============ */
+function renderAll(){
+  onTMode(settings.translate.mode, true);
+  onOMode(settings.ocr.mode, true);
+  document.getElementById('tUrl').value  = settings.translate.url;
+  document.getElementById('tKey').value  = settings.translate.key;
+  document.getElementById('tModel').value= settings.translate.model;
+  document.getElementById('oUrl').value  = settings.ocr.url;
+  document.getElementById('oKey').value  = settings.ocr.key;
+  document.getElementById('oModel').value= settings.ocr.model;
+  renderTProviders(); renderOProviders();
+  renderCur();
+}
+function renderCur(){
+  var t = settings.translate;
+  document.getElementById('tCur').innerHTML = '当前生效：<b>'+(t.mode==='builtin' ? '内置翻译引擎（默认）' : t.provider+'（自定义 · '+t.url+'）')+'</b>';
+  var o = settings.ocr;
+  document.getElementById('oCur').innerHTML = '当前生效：<b>'+(o.mode==='builtin' ? '内置 OCR（PaddleOCR）' : o.provider+'（自定义 · '+o.url+'）')+'</b>';
+}
+
+/* 模式切换 */
+function onTMode(m, silent){
+  settings.translate.mode = m;
+  document.getElementById('tm-builtin').classList.toggle('on', m==='builtin');
+  document.getElementById('tm-custom').classList.toggle('on', m==='custom');
+  document.getElementById('tf-custom').classList.toggle('show', m==='custom');
+  if(!silent) renderCur();
+}
+function onOMode(m, silent){
+  settings.ocr.mode = m;
+  document.getElementById('om-builtin').classList.toggle('on', m==='builtin');
+  document.getElementById('om-custom').classList.toggle('on', m==='custom');
+  document.getElementById('of-custom').classList.toggle('show', m==='custom');
+  if(!silent) renderCur();
+}
+
+/* 服务商模板 chips */
+function renderTProviders(){
+  document.getElementById('tProviders').innerHTML = PM.translateProviders.map(function(p,i){
+    var on = settings.translate.provider===p.name;
+    return '<span class="chip'+(on?' on':'')+'" data-i="'+i+'" onclick="pickTProvider('+i+')">'+p.name+'</span>';
+  }).join('') + '<span class="chip" data-i="-1" onclick="pickTProvider(-1)">自定义</span>';
+}
+function pickTProvider(i){
+  document.querySelectorAll('#tProviders .chip').forEach(function(c){c.classList.remove('on')});
+  if(i<0){ settings.translate.provider='自定义'; document.getElementById('tUrl').value=''; document.getElementById('tModel').value=''; return }
+  var p = PM.translateProviders[i];
+  settings.translate.provider = p.name;
+  document.getElementById('tUrl').value = p.base;
+  document.getElementById('tModel').value = p.model;
+  document.querySelectorAll('#tProviders .chip').forEach(function(c){ if(Number(c.dataset.i)===i) c.classList.add('on') });
+}
+function renderOProviders(){
+  document.getElementById('oProviders').innerHTML = PM.ocrProviders.map(function(p,i){
+    var on = settings.ocr.provider===p.name;
+    return '<span class="chip'+(on?' on':'')+'" data-i="'+i+'" onclick="pickOProvider('+i+')">'+p.name+'</span>';
+  }).join('') + '<span class="chip" data-i="-1" onclick="pickOProvider(-1)">自定义</span>';
+}
+function pickOProvider(i){
+  document.querySelectorAll('#oProviders .chip').forEach(function(c){c.classList.remove('on')});
+  if(i<0){ settings.ocr.provider='自定义'; document.getElementById('oUrl').value=''; document.getElementById('oModel').value=''; return }
+  var p = PM.ocrProviders[i];
+  settings.ocr.provider = p.name;
+  document.getElementById('oUrl').value = p.base;
+  document.getElementById('oModel').value = p.model;
+  document.querySelectorAll('#oProviders .chip').forEach(function(c){ if(Number(c.dataset.i)===i) c.classList.add('on') });
+}
+
+/* ============ 校验 + 测试连接 ============ */
+function validate(which){
+  var m = which==='t' ? settings.translate : settings.ocr;
+  if(m.mode==='builtin') return true;
+  var url = which==='t' ? document.getElementById('tUrl').value.trim() : document.getElementById('oUrl').value.trim();
+  var key = which==='t' ? document.getElementById('tKey').value.trim() : document.getElementById('oKey').value.trim();
+  var model = which==='t' ? document.getElementById('tModel').value.trim() : document.getElementById('oModel').value.trim();
+  if(which==='t' && (!key || !model)){ toast('自定义翻译接口需填写 API Key 与模型名'); return false }
+  if(!url){ toast('自定义接口需填写接口地址'); return false }
+  m.url = url; m.key = key; m.model = model;
+  return true;
+}
+function testEngine(which){
+  if(!validate(which)) return;
+  var st = document.getElementById(which==='t' ? 'tStatus' : 'oStatus');
+  var stKey = which==='t' ? 'tStatus' : 'oStatus';
+  st.className = 'status-badge st-idle'; st.textContent = '⏳ 测试中…';
+  var url = (which==='t' ? document.getElementById('tUrl').value : document.getElementById('oUrl').value).trim();
+  setTimeout(function(){
+    /* 演示判定：地址以 http(s):// 开头且非空即模拟成功；真实产品由后端代理探测可达性 + 鉴权 */
+    var ok = /^https?:\/\//.test(url);
+    var el = document.getElementById(stKey);
+    if(ok){ el.className='status-badge st-ok'; el.textContent='✓ 连接成功（延迟 '+(80+Math.floor(Math.random()*220))+'ms）' }
+    else{ el.className='status-badge st-err'; el.textContent='✕ 连接失败：地址需以 http(s):// 开头' }
+    toast(ok ? '✅ 接口可达（原型模拟，真实产品后端代理探测）' : '❌ 接口地址格式不正确');
+  }, 1000);
+}
+
+/* ============ 初始化 ============ */
+loadSettings();
+renderAll();
+</script>
+</body>
+</html>

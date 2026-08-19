@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaperMind</title>
+<link rel="icon" type="image/png" href="favicon-32.png">
+<link rel="stylesheet" href="style.css?v=2301">
+<style>
+/* 偏好设置（原设置中心并入） */
+.set-block{border:1px solid var(--border);border-radius:12px;background:#fff;padding:20px 22px;margin-bottom:16px;box-shadow:var(--shadow)}
+.set-block h3{font-size:16px;margin-bottom:4px}
+.set-block .tip{font-size:12.5px;color:var(--text-3);margin-bottom:14px}
+.mode-opt{display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;padding:8px 14px;border:1px solid var(--border);border-radius:8px;background:#fafbfe}
+.mode-opt.on{border-color:var(--primary);background:var(--primary-light);color:var(--primary);font-weight:600}
+.mode-opt input{accent-color:var(--primary)}
+.eng-fields{display:none;background:#f8fafc;border-radius:10px;padding:14px 16px;margin-bottom:12px}
+.eng-fields.show{display:block}
+.eng-fields .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.eng-fields .row3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}
+.eng-fields .field label{display:block;font-size:12px;color:var(--text-2);margin-bottom:4px}
+.eng-fields .field input{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;background:#fff}
+.eng-fields .field input:focus{border-color:var(--primary)}
+.provider-pick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.provider-pick .chip{padding:4px 12px;border:1px solid var(--border);border-radius:16px;font-size:12.5px;color:var(--text-2);cursor:pointer}
+.provider-pick .chip.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.status-badge{font-size:12px;padding:3px 10px;border-radius:10px}
+.st-idle{background:#f1f5f9;color:var(--text-3)}
+.st-ok{background:#dcfce7;color:#15803d}
+.st-err{background:#fee2e2;color:#b91c1c}
+.cur-engine{font-size:12.5px;color:var(--text-2);background:#eff6ff;border:1px solid #dbeafe;border-radius:8px;padding:8px 12px;margin-top:10px}
+.cur-engine b{color:var(--primary)}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <a class="logo" href="index.html"><span class="mark">研</span>PaperMind</a>
+  <nav class="nav">
+    <a href="index.html" data-i18n="nav_discover">发现</a>
+    <a href="library.html" data-i18n="nav_library">文献库</a>
+    <a href="graph.html" data-i18n="nav_graph">图谱</a>
+    <a href="vault.html" data-i18n="nav_vault">知识库</a>
+    <a href="community.html" data-i18n="nav_community">社区交流</a>
+  </nav>
+  <div class="right">
+    
+    <div class="user-menu">
+      <div class="avatar" id="avatarBtn">王</div>
+      <div class="um-drop hidden" id="userDrop">
+        <div class="um-head"><b id="umName">—</b><span id="umEmail"></span></div>
+        <a href="profile.html">👤 个人中心</a>
+        <a href="profile.html#edit" onclick="openPfEdit()">📝 修改资料</a>
+        <div class="um-sep"></div>
+        <a href="javascript:logout()">🚪 退出登录</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="container" style="max-width:1000px">
+
+  <!-- 用户信息 -->
+  <div class="card" style="padding:26px;display:flex;gap:20px;align-items:center">
+    <div class="avatar" style="width:64px;height:64px;font-size:26px" id="pfAvatar">王</div>
+    <div style="flex:1">
+      <div style="font-size:19px;font-weight:700"><span id="pfName">王工</span> <span class="badge badge-purple" style="margin-left:6px" id="pfRole">专业版</span></div>
+      <div style="color:var(--text-3);font-size:13px;margin-top:4px" id="pfSub">AI 视觉识别方向 · OCR / 考试防作弊 · 连续学习 <b style="color:var(--warn)">9</b> 天</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <a class="btn btn-primary" href="#edit" onclick="openPfEdit()" data-i18n="btn_edit">📝 修改资料</a>
+      <a class="btn" href="#prefs" data-i18n="btn_prefs">⚙ 偏好设置</a>
+      <button class="btn" style="color:var(--danger)" onclick="logout()" data-i18n="btn_logout">🚪 退出登录</button>
+    </div>
+  </div>
+
+  <!-- 个人资料 -->
+  <div class="section-title" data-i18n="pf_info">🪪 个人资料</div>
+  <div class="card" style="padding:6px" id="pfInfo"></div>
+
+  <!-- 统计卡片 -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:16px">
+    <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px;font-weight:800;color:var(--primary)" id="stRead">0</div><div style="color:var(--text-3);font-size:13px;margin-top:2px" data-i18n="pf_stat_read">已读论文</div></div>
+    <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px;font-weight:800;color:var(--accent)" id="stNote">0</div><div style="color:var(--text-3);font-size:13px;margin-top:2px" data-i18n="pf_stat_note">笔记 / 高亮</div></div>
+    <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px;font-weight:800;color:var(--purple)" id="stMin">0</div><div style="color:var(--text-3);font-size:13px;margin-top:2px" data-i18n="pf_stat_min">阅读时长(分)</div></div>
+    <div class="card" style="padding:18px;text-align:center"><div style="font-size:26px;font-weight:800;color:var(--warn)" id="stQ">0</div><div style="color:var(--text-3);font-size:13px;margin-top:2px" data-i18n="pf_stat_q">AI 提问次数</div></div>
+  </div>
+
+  <!-- 最近阅读 -->
+  <div class="section-title" data-i18n="pf_recent">🕘 最近阅读</div>
+  <div class="card" style="padding:6px" id="recentList"></div>
+
+  <!-- 我的笔记 -->
+  <div class="section-title" data-i18n="pf_notes">📝 我的笔记 <span class="more" onclick="location.href='library.html?tab=reader&p=0'" style="cursor:pointer">去阅读器继续记 →</span></div>
+  <div class="card" style="padding:16px" id="noteList"></div>
+
+  <!-- 我的收藏 -->
+  <div class="section-title" data-i18n="pf_stars">⭐ 我的收藏</div>
+  <div class="card" style="padding:6px" id="starList"></div>
+
+  <!-- 已加入团队（可加入多个，社区交流） -->
+  <div class="section-title" style="margin-top:24px">👥 已加入团队
+    <span class="more" style="cursor:pointer" onclick="location.href='community.html'">去社区交流 →</span>
+  </div>
+  <div class="card" style="padding:6px" id="myTeamsList"></div>
+
+  <!-- ============ 偏好设置（原设置中心并入，从本页锚点进入） ============ -->
+  <div class="section-title" style="margin-top:28px" id="prefs" data-i18n="pf_prefs">⚙ 偏好设置
+    <span class="more" style="color:var(--text-3);font-size:13px">配置翻译 / OCR 识别引擎 · 未配置时默认调用内置引擎 · 设置仅对当前账号生效</span>
+  </div>
+
+  <div class="set-block">
+    <h3 data-i18n="pf_lang">🌐 界面语言</h3>
+    <div class="tip">切换界面显示语言（中文 / English），保存后立即生效。</div>
+    <div class="mode-row">
+      <label class="mode-opt" id="lm-zh"><input type="radio" name="lmode" value="zh" onchange="onLangChange('zh')"> 中文</label>
+      <label class="mode-opt" id="lm-en"><input type="radio" name="lmode" value="en" onchange="onLangChange('en')"> English</label>
+    </div>
+    <div class="cur-engine" id="langCur">当前语言：<b>中文</b></div>
+  </div>
+
+  <div class="set-block">
+    <h3 data-i18n="pf_engine_t">🈶 翻译引擎</h3>
+    <div class="tip">用于阅读器的划词翻译与全文翻译。选择"自定义接口"后可接入任意兼容服务，未配置时默认使用内置引擎。</div>
+    <div class="mode-row">
+      <label class="mode-opt on" id="tm-builtin"><input type="radio" name="tmode" value="builtin" onchange="onTMode('builtin')"> 内置翻译引擎（默认）</label>
+      <label class="mode-opt" id="tm-custom"><input type="radio" name="tmode" value="custom" onchange="onTMode('custom')"> 自定义接口</label>
+    </div>
+    <div class="eng-fields" id="tf-custom">
+      <div class="provider-pick" id="tProviders"></div>
+      <div class="field"><label>接口地址（Base URL）*</label><input id="tUrl" placeholder="https://api.deepseek.com/v1"></div>
+      <div class="row3">
+        <div class="field"><label>API Key *</label><input id="tKey" type="password" placeholder="sk-…"></div>
+        <div class="field"><label>模型名 *</label><input id="tModel" placeholder="deepseek-chat"></div>
+        <div class="field"><label>超时（秒）</label><input id="tTimeout" value="30" style="text-align:center"></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="btn" onclick="testEngine('t')" data-i18n="btn_test">🔌 测试连接</button>
+        <span class="status-badge st-idle" id="tStatus">未测试</span>
+      </div>
+    </div>
+    <div class="cur-engine" id="tCur">当前生效：<b>内置翻译引擎（默认）</b></div>
+  </div>
+
+  <div class="set-block">
+    <h3 data-i18n="pf_engine_o">🔍 OCR 识别引擎</h3>
+    <div class="tip">用于扫描版 PDF 导入时的文字识别。可接入自建 PaddleOCR 服务或第三方 OCR 接口，未配置时默认使用平台内置 OCR。</div>
+    <div class="mode-row">
+      <label class="mode-opt on" id="om-builtin"><input type="radio" name="omode" value="builtin" onchange="onOMode('builtin')"> 内置 OCR（PaddleOCR）</label>
+      <label class="mode-opt" id="om-custom"><input type="radio" name="omode" value="custom" onchange="onOMode('custom')"> 自定义接口</label>
+    </div>
+    <div class="eng-fields" id="of-custom">
+      <div class="provider-pick" id="oProviders"></div>
+      <div class="field"><label>接口地址 *</label><input id="oUrl" placeholder="http://10.1.7.68:8088/ocr"></div>
+      <div class="row">
+        <div class="field"><label>API Key（可选）</label><input id="oKey" type="password" placeholder="无鉴权可留空"></div>
+        <div class="field"><label>模型 / 版本</label><input id="oModel" placeholder="PP-OCRv5"></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button class="btn" onclick="testEngine('o')" data-i18n="btn_test">🔌 测试连接</button>
+        <span class="status-badge st-idle" id="oStatus">未测试</span>
+      </div>
+    </div>
+    <div class="cur-engine" id="oCur">当前生效：<b>内置 OCR（PaddleOCR）</b></div>
+  </div>
+
+  <!-- 保存 -->
+  <div class="card" style="padding:16px 20px;display:flex;align-items:center;gap:12px">
+    <button class="btn btn-primary" onclick="saveSettings()" data-i18n="btn_save_set">💾 保存设置</button>
+    <button class="btn" onclick="resetSettings()" data-i18n="btn_reset">↩ 恢复默认</button>
+    <span style="color:var(--text-3);font-size:12.5px">保存后立即生效：阅读器翻译、扫描件 OCR 均按此配置调用</span>
+  </div>
+
+  <!-- ============ 数据备份（导出/导入，防数据丢失与换环境迁移） ============ -->
+  <div class="section-title" style="margin-top:28px" id="sec-backup" data-i18n="pf_backup">💾 数据备份</div>
+  <div class="card" style="padding:14px 18px">
+    <div style="font-size:12.5px;color:var(--text-2);line-height:1.9;margin-bottom:10px">
+      当前全部数据（论文/笔记/高亮/术语/收藏网站/图谱/设置）保存在<b>本浏览器 localStorage</b>。
+      建议定期<b>导出备份</b>——清缓存、换浏览器、换电脑后可通过<b>导入恢复</b>一键迁移，评审演示前务必导出一次。
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="exportBackup()">⬇ 导出全部数据备份</button>
+      <button class="btn" onclick="document.getElementById('backupFile').click()">⬆ 导入备份恢复</button>
+      <input type="file" id="backupFile" accept=".json,application/json" style="display:none" onchange="importBackup(this)">
+      <span style="font-size:11.5px;color:var(--text-3)">导出文件：papermind-backup-日期.json · 导入后自动刷新</span>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- 修改资料 modal -->
+<div class="modal-mask" id="pfEditModal">
+  <div class="modal">
+    <span class="close" onclick="closePfEdit()">✕</span>
+    <h3>📝 修改个人资料</h3>
+    <!-- 头像 -->
+    <div class="field">
+      <label>头像</label>
+      <div style="display:flex;align-items:center;gap:14px">
+        <div class="avatar" style="width:56px;height:56px;font-size:24px;flex-shrink:0" id="pfAvPrev">🦉</div>
+        <div style="flex:1">
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:6px">默认头像（点击选择）</div>
+          <div id="pfAvGrid" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-sm" onclick="document.getElementById('pfAvFile').click()">📁 上传图片</button>
+            <button class="btn btn-sm" onclick="pfAvReset()">↩ 恢复默认</button>
+            <input type="file" id="pfAvFile" accept="image/*" style="display:none" onchange="pfAvUpload()">
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="field"><label>姓名</label><input id="pfNameI"></div>
+    <div class="field"><label>邮箱</label><input id="pfEmailI" type="email"></div>
+    <div class="field"><label>角色</label><select id="pfRoleI" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:#fff"></select></div>
+    <div class="field"><label>研究方向</label><input id="pfDirI" placeholder="如：AI 视觉识别方向 · OCR / 考试防作弊"></div>
+    <div class="field"><label>身份证号</label><input id="pfIdI" maxlength="18" placeholder="18 位身份证号"></div>
+    <div class="err" id="pfEditErr" style="color:var(--danger);font-size:12.5px;min-height:18px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn" onclick="closePfEdit()">取消</button>
+      <button class="btn btn-primary" onclick="savePfEdit()">💾 保存资料</button>
+    </div>
+  </div>
+</div>
+
+<script src="data.js?v=2301"></script>
+<script src="user-menu.js?v=2301"></script>
+<script>
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2200)}
+
+(function(){
+  var s = PM.stats;
+  document.getElementById('stRead').textContent = s.read;
+  document.getElementById('stNote').textContent = s.notes + ' / ' + s.hl;
+  document.getElementById('stMin').textContent = s.minutes;
+  document.getElementById('stQ').textContent = s.minutes>200 ? 46 : 23;
+
+  /* ===== 个人资料 ===== */
+  var u = PM.getUser();
+  document.getElementById('pfName').textContent = u.name;
+  document.getElementById('pfRole').textContent = u.role || '普通用户';
+  var avEl = document.getElementById('pfAvatar');
+  var av = u.avatar || PM.defaultAvatar;
+  if(/^data:image/.test(av)){
+    avEl.textContent = '';
+    var avImg = document.createElement('img');
+    avImg.src = av;
+    avImg.style.cssText = 'width:100%;height:100%;border-radius:50%;object-fit:cover;display:block';
+    avEl.appendChild(avImg);
+  } else {
+    avEl.textContent = av.length <= 2 ? av : (u.name ? u.name[0] : '客');
+  }
+  if(u.direction) document.getElementById('pfSub').innerHTML = u.direction + ' · 连续学习 <b style="color:var(--warn)">9</b> 天';
+  var rows = [
+    ['姓名', u.name],
+    ['邮箱', u.email || '—'],
+    ['身份证号', u.idcard || '—'],
+    ['角色', u.role || '普通用户']
+  ];
+  document.getElementById('pfInfo').innerHTML = '<table class="tbl"><tbody>' + rows.map(function(r){
+    return '<tr><td style="width:140px;color:var(--text-2);font-size:13px">'+r[0]+'</td><td style="font-weight:600">'+r[1]+'</td></tr>';
+  }).join('') + '</tbody></table>';
+
+  /* 最近阅读 */
+  document.getElementById('recentList').innerHTML = PM.recent.map(function(pid){
+    var p = PM.papers[pid];
+    return '<div class="paper-card" style="margin:8px 0;display:flex;gap:14px;align-items:center">'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="title" style="font-size:14.5px" onclick="location.href=\'library.html?p='+p.id+'\'">'+p.title+'</div>'+
+        '<div style="color:var(--text-3);font-size:12.5px">'+p.venue+'</div>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:10px">'+
+        '<span style="font-size:12px;color:var(--text-3)">已读 '+p.read+'%</span>'+
+        '<div class="progress" style="width:120px"><i style="width:'+p.read+'%"></i></div>'+
+        '<button class="btn btn-sm btn-primary" onclick="location.href=\'library.html?tab=reader&p='+p.id+'&mark=first\'">继续</button>'+
+      '</div></div>';
+  }).join('');
+
+  /* 笔记 */
+  document.getElementById('noteList').innerHTML = PM.notes.map(function(n){
+    var p = PM.papers[n.paper];
+    return '<div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start">'+
+      '<span class="color-chip" style="width:14px;height:14px;border-radius:4px;background:'+{y:'#fde68a',g:'#a7f3d0',b:'#bfdbfe',p:'#fbcfe8',o:'#fed7aa'}[n.color]+';flex-shrink:0"></span>'+
+      '<div style="flex:1"><div style="font-size:13.5px">'+n.text+'</div>'+
+      '<div style="font-size:12px;color:var(--text-3);margin-top:4px">摘自：<a href="library.html?tab=reader&p='+p.id+'">'+p.title+'</a></div></div>'+
+      '<button class="btn btn-sm btn-primary" onclick="location.href=\'library.html?tab=reader&p='+p.id+'&mark=first\'">📖 阅读</button></div>';
+  }).join('');
+
+  /* 收藏 */
+  document.getElementById('starList').innerHTML = PM.papers.filter(function(p){return p.starred && !p._trashed}).map(function(p){
+    return '<div class="paper-card" style="margin:8px 0;display:flex;align-items:center;gap:12px">'+
+      '<span style="color:var(--warn)">⭐</span>'+
+      '<div style="flex:1;min-width:0"><div class="title" style="font-size:14.5px" onclick="location.href=\'library.html?p='+p.id+'\'">'+p.title+'</div>'+
+      '<div style="color:var(--text-3);font-size:12.5px">'+p.venue+' · 被引 '+(p.cites/10000).toFixed(1)+'万</div></div>'+
+      '<button class="btn btn-sm" onclick="location.href=\'library.html?tab=reader&p='+p.id+'\'">阅读</button></div>';
+  }).join('');
+
+  /* 已加入团队（可加入多个） */
+  var myName = PM.getUser().name;
+  var teams = [];
+  try{ teams = JSON.parse(localStorage.getItem('pm_teams')||'[]') }catch(e){}
+  var myTeams = teams.filter(function(t){ return t.members.indexOf(myName)>=0 });
+  document.getElementById('myTeamsList').innerHTML = myTeams.length ? myTeams.map(function(t){
+    var isOwner = t.owner===myName;
+    return '<div class="paper-card" style="margin:8px 0;display:flex;align-items:center;gap:12px">'+
+      '<span style="font-size:20px">👥</span>'+
+      '<div style="flex:1;min-width:0"><div class="title" style="font-size:14.5px">'+t.name+(isOwner?' <span class="badge badge-purple" style="font-size:10px">队长</span>':'')+'</div>'+
+      '<div style="color:var(--text-3);font-size:12.5px">'+t.members.length+' 人 · 队长 '+t.owner+' · '+t.desc.slice(0,40)+'</div></div>'+
+      '<button class="btn btn-sm btn-primary" onclick="location.href=\'community.html\'">进入</button></div>';
+  }).join('') : '<div style="color:var(--text-3);font-size:13px;padding:14px;text-align:center">还未加入团队，去「社区交流 → 团队」申请加入或创建</div>';
+
+  /* 学习建议（个性化：按研究方向维度推荐，方向以"、"分割） */
+  var dirs = (u.direction || PM.userDefaults.direction).split('、').map(function(s){return s.trim()}).filter(Boolean);
+  var tip = document.createElement('div');
+  tip.className = 'card';
+  tip.style.cssText = 'padding:16px 18px;margin-top:20px;background:linear-gradient(135deg,#f5f3ff,#eff6ff);border-color:#e0e7ff';
+  var tips = [];
+  dirs.forEach(function(d){
+    var kw = d.toLowerCase();
+    var hit = PM.papers.filter(function(p){ if(p._trashed) return false;
+      return (p.cat+' '+p.tags.join(' ')+' '+p.title+' '+p.titleZh).toLowerCase().indexOf(kw) >= 0 && p.read < 100;
+    });
+    if(hit.length){
+      var h = hit[0];
+      tips.push(PM.t('pf_tip_title')+'「'+d+'」：<b>《'+h.title.slice(0,24)+'…》</b>（'+h.cat+'）—'+PM.t('pf_tip_direct'));
+    } else {
+      tips.push('「'+d+'」：'+PM.t('pf_tip_nomatch'));
+    }
+  });
+  tips.push(PM.t('pf_tip_ai'));
+  tip.innerHTML = '<b>🎯 '+PM.t('pf_tip_title')+'（'+dirs.join('、')+'）</b><div style="color:var(--text-2);font-size:13px;margin-top:6px;line-height:2">'+
+    tips.map(function(t,i){ return (i+1)+'️⃣ '+t }).join('<br>') + '</div>';
+  document.querySelector('.container').appendChild(tip);
+
+  /* 从其他页面跳 profile.html#edit → 自动打开修改资料弹窗 */
+  if(location.hash === '#edit') setTimeout(openPfEdit, 300);
+})();
+
+/* ============ 修改资料 ============ */
+function logout(){ PM.logout(); location.href = 'login.html' }
+var pfEditAvatar = null;   // 暂存头像（emoji 或 base64）
+function renderPfAvGrid(){
+  var u = PM.getUser();
+  document.getElementById('pfAvGrid').innerHTML = PM.avatars.map(function(a){
+    var on = (!pfEditAvatar && !/^data:image/.test(u.avatar||'') && u.avatar===a) || pfEditAvatar===a;
+    return '<span class="avatar" style="width:34px;height:34px;font-size:16px;cursor:pointer;border:'+(on?'2px solid var(--primary)':'2px solid transparent')+'" onclick="pfPickAvatar(\''+a+'\')">'+a+'</span>';
+  }).join('');
+}
+function pfPickAvatar(a){
+  pfEditAvatar = a;
+  var p = document.getElementById('pfAvPrev');
+  p.textContent = a;
+  if(p.querySelector('img')) p.innerHTML = a;
+  renderPfAvGrid();
+}
+function pfAvReset(){
+  pfEditAvatar = PM.defaultAvatar;
+  var p = document.getElementById('pfAvPrev');
+  p.textContent = PM.defaultAvatar;
+  if(p.querySelector('img')) p.innerHTML = PM.defaultAvatar;
+  renderPfAvGrid();
+}
+function pfAvUpload(){
+  var f = document.getElementById('pfAvFile').files[0];
+  if(!f) return;
+  var reader = new FileReader();
+  reader.onload = function(e){
+    pfEditAvatar = e.target.result;   // base64
+    var p = document.getElementById('pfAvPrev');
+    p.innerHTML = '';
+    var img = document.createElement('img');
+    img.src = pfEditAvatar;
+    img.style.cssText = 'width:100%;height:100%;border-radius:50%;object-fit:cover;display:block';
+    p.appendChild(img);
+    renderPfAvGrid();
+    toast('✅ 头像已选择（保存后生效）');
+  };
+  reader.readAsDataURL(f);
+}
+function openPfEdit(){
+  var u = PM.getUser();
+  pfEditAvatar = null;
+  document.getElementById('pfNameI').value = u.name;
+  document.getElementById('pfEmailI').value = u.email || '';
+  document.getElementById('pfRoleI').innerHTML = ['普通用户','技术负责人','团队管理员','专业版'].map(function(r){
+    return '<option'+(r===(u.role||'普通用户')?' selected':'')+'>'+r+'</option>';
+  }).join('');
+  document.getElementById('pfDirI').value = u.direction || '';
+  document.getElementById('pfIdI').value = (u.idcard && u.idcard.indexOf('*')<0) ? u.idcard : '';
+  document.getElementById('pfEditErr').textContent = '';
+  var p = document.getElementById('pfAvPrev');
+  var av = u.avatar || PM.defaultAvatar;
+  if(/^data:image/.test(av)){
+    p.innerHTML = '';
+    var img = document.createElement('img');
+    img.src = av;
+    img.style.cssText = 'width:100%;height:100%;border-radius:50%;object-fit:cover;display:block';
+    p.appendChild(img);
+  } else p.textContent = av;
+  renderPfAvGrid();
+  document.getElementById('pfEditModal').classList.add('show');
+}
+function closePfEdit(){ document.getElementById('pfEditModal').classList.remove('show') }
+function savePfEdit(){
+  var name = document.getElementById('pfNameI').value.trim();
+  var email = document.getElementById('pfEmailI').value.trim();
+  var role = document.getElementById('pfRoleI').value;
+  var dir = document.getElementById('pfDirI').value.trim();
+  var id = document.getElementById('pfIdI').value.trim().toUpperCase();
+  var err = document.getElementById('pfEditErr');
+  if(!name){ err.textContent='姓名不能为空'; return }
+  if(!/^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(email)){ err.textContent='邮箱格式不正确'; return }
+  if(id && !/^\d{17}[\dX]$/.test(id)){ err.textContent='身份证号需为 18 位（末位可为 X）'; return }
+  var u = PM.getUser();
+  u.name = name;
+  u.email = email;
+  u.role = role;
+  u.direction = dir || PM.userDefaults.direction;
+  if(pfEditAvatar) u.avatar = pfEditAvatar;
+  if(id) u.idcard = id.slice(0,6)+'********'+id.slice(-4);
+  PM.setUser(u);
+  closePfEdit();
+  toast('✅ 个人资料已更新');
+  setTimeout(function(){ location.reload() }, 500);
+}
+
+/* ============ 数据备份：导出 / 导入（防丢失、换环境迁移） ============ */
+function exportBackup(){
+  var data = {app:'papermind', version:1, ts:new Date().toISOString(), keys:{}};
+  for(var i=0;i<localStorage.length;i++){
+    var k = localStorage.key(i);
+    data.keys[k] = localStorage.getItem(k);
+  }
+  var blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'papermind-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  toast('✅ 已导出全部数据备份（'+Object.keys(data.keys).length+' 项）');
+}
+function importBackup(input){
+  var f = input.files && input.files[0];
+  if(!f){ return }
+  var reader = new FileReader();
+  reader.onload = function(){
+    try{
+      var data = JSON.parse(reader.result);
+      if(!data || !data.keys || typeof data.keys !== 'object') throw new Error('不是有效的备份文件（缺少 keys 字段）');
+      var n = 0;
+      Object.keys(data.keys).forEach(function(k){
+        try{ localStorage.setItem(k, data.keys[k]); n++ }catch(e){}
+      });
+      toast('✅ 已导入 '+n+' 项数据，页面即将刷新');
+      setTimeout(function(){ location.reload() }, 900);
+    }catch(e){
+      toast('❌ 导入失败：'+e.message);
+    }
+  };
+  reader.readAsText(f);
+  input.value = '';
+}
+
+/* ============ 偏好设置（翻译/OCR 引擎配置，原设置中心） ============ */
+var SET_LS = 'pm_settings';
+var settings;
+var tStatus = null, oStatus = null;
+
+/* 界面语言切换 */
+function onLangChange(l){
+  PM.setLang(l);
+  document.getElementById('lm-zh').classList.toggle('on', l==='zh');
+  document.getElementById('lm-en').classList.toggle('on', l==='en');
+  document.getElementById('langCur').innerHTML = PM.t('pf_cur_lang')+'<b>'+(l==='en'?'English':'中文')+'</b>';
+  toast(l==='en' ? '✅ Language switched to English' : '✅ 已切换为中文');
+  setTimeout(function(){ location.reload() }, 400);
+}
+(function(){
+  var l = PM.getLang();
+  document.getElementById('lm-zh').classList.toggle('on', l==='zh');
+  document.getElementById('lm-en').classList.toggle('on', l==='en');
+  document.getElementById('langCur').innerHTML = PM.t('pf_cur_lang')+'<b>'+(l==='en'?'English':'中文')+'</b>';
+})();
+
+function loadSettings(){
+  var def = JSON.parse(JSON.stringify(PM.engineDefaults));
+  try{
+    var saved = JSON.parse(localStorage.getItem(SET_LS) || '{}');
+    settings = {
+      translate: Object.assign({}, def.translate, saved.translate||{}),
+      ocr:      Object.assign({}, def.ocr,      saved.ocr||{})
+    };
+  }catch(e){ settings = def }
+}
+function saveSettings(){
+  var okT = validate('t'), okO = validate('o');
+  if(!okT || !okO){ return }
+  try{ localStorage.setItem(SET_LS, JSON.stringify(settings)); }catch(e){}
+  toast('✅ 设置已保存，立即生效');
+  renderCur();
+}
+function resetSettings(){
+  if(!confirm('恢复默认引擎设置？自定义接口配置将被清除。')) return;
+  settings = JSON.parse(JSON.stringify(PM.engineDefaults));
+  localStorage.removeItem(SET_LS);
+  renderAll();
+  toast('已恢复默认（内置引擎）');
+}
+function renderAll(){
+  onTMode(settings.translate.mode, true);
+  onOMode(settings.ocr.mode, true);
+  document.getElementById('tUrl').value  = settings.translate.url;
+  document.getElementById('tKey').value  = settings.translate.key;
+  document.getElementById('tModel').value= settings.translate.model;
+  document.getElementById('oUrl').value  = settings.ocr.url;
+  document.getElementById('oKey').value  = settings.ocr.key;
+  document.getElementById('oModel').value= settings.ocr.model;
+  renderTProviders(); renderOProviders();
+  renderCur();
+}
+function renderCur(){
+  var t = settings.translate;
+  document.getElementById('tCur').innerHTML = '当前生效：<b>'+(t.mode==='builtin' ? '内置翻译引擎（默认）' : t.provider+'（自定义 · '+t.url+'）')+'</b>';
+  var o = settings.ocr;
+  document.getElementById('oCur').innerHTML = '当前生效：<b>'+(o.mode==='builtin' ? '内置 OCR（PaddleOCR）' : o.provider+'（自定义 · '+o.url+'）')+'</b>';
+}
+function onTMode(m, silent){
+  settings.translate.mode = m;
+  document.getElementById('tm-builtin').classList.toggle('on', m==='builtin');
+  document.getElementById('tm-custom').classList.toggle('on', m==='custom');
+  document.getElementById('tf-custom').classList.toggle('show', m==='custom');
+  if(!silent) renderCur();
+}
+function onOMode(m, silent){
+  settings.ocr.mode = m;
+  document.getElementById('om-builtin').classList.toggle('on', m==='builtin');
+  document.getElementById('om-custom').classList.toggle('on', m==='custom');
+  document.getElementById('of-custom').classList.toggle('show', m==='custom');
+  if(!silent) renderCur();
+}
+function renderTProviders(){
+  document.getElementById('tProviders').innerHTML = PM.translateProviders.map(function(p,i){
+    var on = settings.translate.provider===p.name;
+    return '<span class="chip'+(on?' on':'')+'" data-i="'+i+'" onclick="pickTProvider('+i+')">'+p.name+'</span>';
+  }).join('') + '<span class="chip" data-i="-1" onclick="pickTProvider(-1)">自定义</span>';
+}
+function pickTProvider(i){
+  document.querySelectorAll('#tProviders .chip').forEach(function(c){c.classList.remove('on')});
+  if(i<0){ settings.translate.provider='自定义'; document.getElementById('tUrl').value=''; document.getElementById('tModel').value=''; return }
+  var p = PM.translateProviders[i];
+  settings.translate.provider = p.name;
+  document.getElementById('tUrl').value = p.base;
+  document.getElementById('tModel').value = p.model;
+  document.querySelectorAll('#tProviders .chip').forEach(function(c){ if(Number(c.dataset.i)===i) c.classList.add('on') });
+}
+function renderOProviders(){
+  document.getElementById('oProviders').innerHTML = PM.ocrProviders.map(function(p,i){
+    var on = settings.ocr.provider===p.name;
+    return '<span class="chip'+(on?' on':'')+'" data-i="'+i+'" onclick="pickOProvider('+i+')">'+p.name+'</span>';
+  }).join('') + '<span class="chip" data-i="-1" onclick="pickOProvider(-1)">自定义</span>';
+}
+function pickOProvider(i){
+  document.querySelectorAll('#oProviders .chip').forEach(function(c){c.classList.remove('on')});
+  if(i<0){ settings.ocr.provider='自定义'; document.getElementById('oUrl').value=''; document.getElementById('oModel').value=''; return }
+  var p = PM.ocrProviders[i];
+  settings.ocr.provider = p.name;
+  document.getElementById('oUrl').value = p.base;
+  document.getElementById('oModel').value = p.model;
+  document.querySelectorAll('#oProviders .chip').forEach(function(c){ if(Number(c.dataset.i)===i) c.classList.add('on') });
+}
+function validate(which){
+  var m = which==='t' ? settings.translate : settings.ocr;
+  if(m.mode==='builtin') return true;
+  var url = which==='t' ? document.getElementById('tUrl').value.trim() : document.getElementById('oUrl').value.trim();
+  var key = which==='t' ? document.getElementById('tKey').value.trim() : document.getElementById('oKey').value.trim();
+  var model = which==='t' ? document.getElementById('tModel').value.trim() : document.getElementById('oModel').value.trim();
+  if(which==='t' && (!key || !model)){ toast('自定义翻译接口需填写 API Key 与模型名'); return false }
+  if(!url){ toast('自定义接口需填写接口地址'); return false }
+  m.url = url; m.key = key; m.model = model;
+  return true;
+}
+function testEngine(which){
+  if(!validate(which)) return;
+  var stKey = which==='t' ? 'tStatus' : 'oStatus';
+  var st = document.getElementById(stKey);
+  st.className = 'status-badge st-idle'; st.textContent = '⏳ 正在真实探测…';
+  var url = (which==='t' ? document.getElementById('tUrl').value : document.getElementById('oUrl').value).trim();
+  if(!/^https?:\/\//.test(url)){
+    st.className='status-badge st-err'; st.textContent='✕ 地址需以 http(s):// 开头';
+    toast('❌ 接口地址格式不正确'); return;
+  }
+  /* 真实探测：no-cors 请求目标地址（可达性；opaque 响应也代表网络层成功） */
+  var controller = typeof AbortController!=='undefined' ? new AbortController() : null;
+  var timer = controller ? setTimeout(function(){ controller.abort() }, 6000) : null;
+  var t0 = Date.now();
+  fetch(url, {method:'GET', mode:'no-cors', signal: controller ? controller.signal : undefined})
+    .then(function(){
+      var ms = Date.now()-t0;
+      var el = document.getElementById(stKey);
+      el.className='status-badge st-ok';
+      el.textContent='✓ 服务可达（'+ms+'ms）· 完整鉴权测试在正式版接入';
+      toast('✅ 接口可达（真实探测；正式版做带 Key 的完整调用测试）');
+    })
+    .catch(function(err){
+      var el = document.getElementById(stKey);
+      el.className='status-badge st-err';
+      el.textContent='✕ 连接失败：'+(err && err.name==='AbortError' ? '超时（6s）' : (err.message||'网络错误'));
+      toast('❌ 接口不可达：'+(err && err.message||'网络错误'));
+    })
+    .finally(function(){ if(timer) clearTimeout(timer) });
+}
+loadSettings();
+renderAll();
+</script>
+</body>
+</html>

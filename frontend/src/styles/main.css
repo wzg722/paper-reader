@@ -1,0 +1,78 @@
+:root {
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --primary-light: #eff6ff;
+  --bg: #f5f7fb;
+  --card: #ffffff;
+  --border: #e5e9f2;
+  --border-2: #d1d9e8;
+  --text: #1f2937;
+  --text-2: #6b7280;
+  --text-3: #9ca3af;
+  --accent: #10b981;
+  --warn: #f59e0b;
+  --danger: #ef4444;
+  --purple: #8b5cf6;
+  --radius: 12px;
+  --shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 8px 24px rgba(16, 24, 40, 0.12);
+  --topbar-h: 56px;
+  --sans: "Segoe UI", "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  --serif: Georgia, "Times New Roman", "Songti SC", SimSun, serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body, #app { min-height: 100%; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+a { color: var(--primary); text-decoration: none; }
+.container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.paper-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  transition: 0.15s;
+  cursor: pointer;
+}
+.paper-card:hover {
+  border-color: var(--border-2);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.badge-blue { background: var(--primary-light); color: var(--primary); }
+.badge-green { background: #ecfdf5; color: #059669; }
+.badge-orange { background: #fff7ed; color: #ea580c; }
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 8px 0 14px;
+}
+.muted { color: var(--text-2); }
+.hl-y { background: #fef08a; }
+.hl-g { background: #bbf7d0; }
+.hl-b { background: #bfdbfe; }
+.hl-p { background: #e9d5ff; }
+.hl-o { background: #fed7aa; }
