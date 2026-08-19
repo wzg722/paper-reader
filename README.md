@@ -21,6 +21,48 @@
 
 ---
 
+## 界面预览
+
+> 截图来自可交互 HTML 原型（`docs/prototype/`），界面形态与正式产品一致。
+
+### 发现首页
+
+搜索（含热门词）、论文推荐卡片、本周热榜与导入入口：
+
+![发现首页](docs/screenshots/01-discover.png)
+
+### 文献库
+
+我的文献 / 收藏网站 / 阅读器 / 导入文献四 Tab 闭环，支持分类、标签、回收站：
+
+![文献库](docs/screenshots/02-library.png)
+
+### 阅读器
+
+三栏布局（大纲 / 正文 / AI+笔记），支持原文、中英对照、左右双栏联动、划词翻译 / 5 色高亮 / 笔记 / AI 问答：
+
+![阅读器](docs/screenshots/03-reader.png)
+
+### 知识图谱
+
+Canvas 力导向图，论文 + 概念节点、引用方向边、中心论文 BFS 展开、知识点搜索推荐：
+
+![知识图谱](docs/screenshots/04-graph.png)
+
+### 知识库
+
+知识资产统计、AI 知识卡片、跨论文术语库、笔记聚合、Obsidian Markdown 导出：
+
+![知识库](docs/screenshots/05-vault.png)
+
+### 社区交流
+
+公开动态流、点赞评论、团队创建 / 申请 / 审批、论文分享：
+
+![社区交流](docs/screenshots/06-community.png)
+
+---
+
 ## 快速开始（本地开发）
 
 ### 环境要求
